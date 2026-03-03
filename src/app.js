@@ -3,6 +3,8 @@ import authroutes from './modules/auth/auth.routes.js'
 import dotenv from 'dotenv'    
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middlewares/errorHandler.js'
+import categoryRoutes from './modules/categories/category.routes.js'
+
 
 dotenv.config();
 
@@ -13,7 +15,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use('/api/v1/auth', authroutes);
-
+app.use('/api/v1/categories', categoryRoutes)
 
 app.get("/",(req,res)=>{
     res.status(200).json({message:"ecommerce api is running "});
