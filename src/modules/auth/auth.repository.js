@@ -26,3 +26,37 @@ export const createUser=async({name,email,password_hash})=>{
     const [rows]=await pool.execute(query2,[id]);
     return rows[0];
 }
+
+
+
+
+export const saveRefreshToken = async ({ token, user_id, expires_at }) => {
+  const id = uuidv4()
+  await pool.execute(
+    'INSERT INTO refresh_tokens (id, token, user_id, expires_at) VALUES (?, ?, ?, ?)',
+    [id, token, user_id, expires_at]
+  )
+}
+
+export const findRefreshToken = async (token) => {
+  const [rows] = await pool.execute(
+    'SELECT * FROM refresh_tokens WHERE token = ?',
+    [token]
+  )
+  return rows[0] || null
+}
+
+export const deleteRefreshToken = async (token) => {
+  await pool.execute(
+    'DELETE FROM refresh_tokens WHERE token = ?',
+    [token]
+  )
+}
+
+export const findUserById = async (id) => {
+  const [rows] = await pool.execute(
+    'SELECT id, name, email, role, is_active FROM users WHERE id = ?',
+    [id]
+  )
+  return rows[0] || null
+}
