@@ -5,6 +5,8 @@ import cookieParser from 'cookie-parser';
 import { errorHandler } from './middlewares/errorHandler.js'
 import categoryRoutes from './modules/categories/category.routes.js'
 import productRoutes from './modules/products/product.routes.js'
+import cartRoutes from './modules/cart/cart.routes.js'
+
 
 dotenv.config();
 
@@ -35,7 +37,7 @@ app.get('/api/v1/test/products', async (req, res) => {
 app.use('/api/v1/auth', authroutes);
 app.use('/api/v1/categories', categoryRoutes)
 app.use('/api/v1/products', productRoutes)
-
+app.use('/api/v1/cart', cartRoutes)
 
 app.get("/",(req,res)=>{
     res.status(200).json({message:"ecommerce api is running "});
