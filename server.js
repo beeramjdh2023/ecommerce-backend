@@ -3,9 +3,9 @@ import dotenv from 'dotenv'
 
 dotenv.config();
 
-const port=process.env.PORT || 3000
+const port=process.env.PORT || 4000
 
 
-app.listen(port,()=>{
+app.listen(4000,()=>{
     console.log("ecommerse server is listing on ",port);
 })

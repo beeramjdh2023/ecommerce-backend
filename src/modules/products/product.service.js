@@ -1,12 +1,11 @@
 import slugify from 'slugify'
 import {
   createProduct, getProducts, getProductsCount, getProductById,
-  getProductImages, addProductImage, updateProduct, deleteProduct, getSellerProfile
+  getProductImages, updateProduct, deleteProduct, getSellerProfile
 } from './product.repository.js'
 import { getCategoryById } from '../categories/category.repository.js'
 
 export const createProductService = async (user_id, data) => {
-  // 1. get seller profile
   const seller = await getSellerProfile(user_id)
   if (!seller) {
     throw new Error('Seller profile not found. Please create a seller profile first')
@@ -15,13 +14,11 @@ export const createProductService = async (user_id, data) => {
     throw new Error('Your seller account is not approved yet')
   }
 
-  // 2. check category exists
   const category = await getCategoryById(data.category_id)
   if (!category) {
     throw new Error('Category not found')
   }
 
-  // 3. generate slug
   const slug = slugify(data.name, { lower: true, strict: true })
 
   return await createProduct({ ...data, seller_id: seller.id, slug })
@@ -30,7 +27,7 @@ export const createProductService = async (user_id, data) => {
 export const getProductsService = async (query) => {
   const page = parseInt(query.page) || 1
   const limit = parseInt(query.limit) || 10
-  
+
   const filters = {
     category_id: query.category_id || null,
     min_price: query.min_price || null,
@@ -64,7 +61,6 @@ export const getProductService = async (id) => {
   if (!product) {
     throw new Error('Product not found')
   }
-
   const images = await getProductImages(id)
   return { ...product, images }
 }
@@ -75,7 +71,6 @@ export const updateProductService = async (id, user_id, data) => {
     throw new Error('Product not found')
   }
 
-  // check seller owns this product
   const seller = await getSellerProfile(user_id)
   if (!seller || product.seller_id !== seller.id) {
     throw new Error('You are not authorized to update this product')
@@ -91,7 +86,6 @@ export const deleteProductService = async (id, user_id, role) => {
     throw new Error('Product not found')
   }
 
-  // admin can delete any product, seller can only delete their own
   if (role !== 'ADMIN') {
     const seller = await getSellerProfile(user_id)
     if (!seller || product.seller_id !== seller.id) {

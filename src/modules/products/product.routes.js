@@ -15,6 +15,6 @@ router.get('/:id', getProductController)
 // seller or admin only
 router.post('/', authenticate, authorize('SELLER', 'ADMIN'), createProductController)
 router.put('/:id', authenticate, authorize('SELLER', 'ADMIN'), updateProductController)
-router.delete('/:id', authenticate, authorize('SELLER', 'ADMIN', 'ADMIN'), deleteProductController)
+router.delete('/:id', authenticate, authorize('SELLER', 'ADMIN'), deleteProductController)
 
 export default router

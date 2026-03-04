@@ -15,12 +15,15 @@ export const createProduct = async ({ seller_id, category_id, name, slug, descri
 
 export const getProducts = async ({ category_id, min_price, max_price, search, sort, page, limit }) => {
 
-  // parse all numeric values at the top
   const limitInt = parseInt(limit)
   const pageInt = parseInt(page)
   const offsetInt = (pageInt - 1) * limitInt
   const minPrice = min_price ? parseFloat(min_price) : null
   const maxPrice = max_price ? parseFloat(max_price) : null
+
+  if (isNaN(limitInt) || isNaN(offsetInt)) {
+    throw new Error('Invalid pagination parameters')
+  }
 
   const params = []
 
@@ -30,13 +33,11 @@ export const getProducts = async ({ category_id, min_price, max_price, search, s
       p.stock_quantity, p.average_rating, p.total_reviews,
       p.total_sold, p.is_featured, p.created_at,
       c.name AS category_name,
-      s.shop_name AS seller_name,
-      pi.image_url AS primary_image
+      s.shop_name AS seller_name
     FROM products p
     JOIN categories c ON p.category_id = c.id
     JOIN seller_profiles s ON p.seller_id = s.id
-    LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = TRUE
-    WHERE p.is_active = 1 
+    WHERE p.is_active = 1
   `
 
   if (category_id) {
@@ -67,35 +68,32 @@ export const getProducts = async ({ category_id, min_price, max_price, search, s
     rating: 'p.average_rating DESC',
     popular: 'p.total_sold DESC'
   }
+
   query += ` ORDER BY ${sortOptions[sort] || sortOptions.newest}`
-
-  query += ' LIMIT ? OFFSET ?'
-  params.push(limitInt, offsetInt)
-
-  
-  console.log('QUERY:', query)
-console.log('PARAMS:', params)
-console.log('PARAM TYPES:', params.map(p => typeof p))
+  query += ` LIMIT ${limitInt} OFFSET ${offsetInt}`
 
   const [rows] = await pool.execute(query, params)
   return rows
 }
 
 export const getProductsCount = async ({ category_id, min_price, max_price, search }) => {
+  const minPrice = min_price ? parseFloat(min_price) : null
+  const maxPrice = max_price ? parseFloat(max_price) : null
   const params = []
+
   let query = 'SELECT COUNT(*) as total FROM products p WHERE p.is_active = 1'
 
   if (category_id) {
     query += ' AND p.category_id = ?'
     params.push(category_id)
   }
-  if (min_price) {
+  if (minPrice) {
     query += ' AND p.price >= ?'
-    params.push(min_price)
+    params.push(minPrice)
   }
-  if (max_price) {
+  if (maxPrice) {
     query += ' AND p.price <= ?'
-    params.push(max_price)
+    params.push(maxPrice)
   }
   if (search) {
     query += ' AND (p.name LIKE ? OR p.description LIKE ?)'
