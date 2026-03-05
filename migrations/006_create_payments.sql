@@ -1,0 +1,17 @@
+USE ecommerce_db;
+
+CREATE TABLE payments (
+  id VARCHAR(36) PRIMARY KEY,
+  order_id VARCHAR(36) NOT NULL UNIQUE,
+  razorpay_payment_id VARCHAR(255),
+  razorpay_order_id VARCHAR(255) NOT NULL,
+  razorpay_signature VARCHAR(500),
+  amount DECIMAL(10,2) NOT NULL,
+  currency VARCHAR(10) DEFAULT 'INR',
+  status ENUM('PENDING', 'PAID', 'FAILED', 'REFUNDED') DEFAULT 'PENDING',
+  method VARCHAR(50),
+  idempotency_key VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE RESTRICT
+);

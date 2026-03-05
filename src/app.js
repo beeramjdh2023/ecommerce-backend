@@ -8,13 +8,22 @@ import productRoutes from './modules/products/product.routes.js'
 import cartRoutes from './modules/cart/cart.routes.js'
 import orderRoutes from './modules/orders/order.routes.js'
 import addressRoutes from './modules/addresses/address.routes.js'
+import paymentRoutes from './modules/payments/payment.routes.js'
+
 
 dotenv.config();
 
 const app=express();
 
 
-app.use(express.json());
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/v1/payments/webhook') {
+    next() // skip express.json() for webhook because webhook need raw body to verify signature
+  } else {
+    express.json()(req, res, next) // parse JSON for everything else so we get req.body in others
+  }
+})
+
 app.use(cookieParser());
 
 import pool from './config/db.js'
@@ -41,7 +50,7 @@ app.use('/api/v1/products', productRoutes)
 app.use('/api/v1/cart', cartRoutes)
 app.use('/api/v1/addresses', addressRoutes)
 app.use('/api/v1/orders', orderRoutes)
-
+app.use('/api/v1/payments', paymentRoutes)
 
 app.get("/",(req,res)=>{
     res.status(200).json({message:"ecommerce api is running "});
