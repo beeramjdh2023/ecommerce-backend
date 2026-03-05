@@ -6,7 +6,8 @@ import { errorHandler } from './middlewares/errorHandler.js'
 import categoryRoutes from './modules/categories/category.routes.js'
 import productRoutes from './modules/products/product.routes.js'
 import cartRoutes from './modules/cart/cart.routes.js'
-
+import orderRoutes from './modules/orders/order.routes.js'
+import addressRoutes from './modules/addresses/address.routes.js'
 
 dotenv.config();
 
@@ -38,6 +39,9 @@ app.use('/api/v1/auth', authroutes);
 app.use('/api/v1/categories', categoryRoutes)
 app.use('/api/v1/products', productRoutes)
 app.use('/api/v1/cart', cartRoutes)
+app.use('/api/v1/addresses', addressRoutes)
+app.use('/api/v1/orders', orderRoutes)
+
 
 app.get("/",(req,res)=>{
     res.status(200).json({message:"ecommerce api is running "});

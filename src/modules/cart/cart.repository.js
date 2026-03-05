@@ -36,6 +36,7 @@ export const getCartWithItems = async (user_id) => {
       p.name, p.slug, p.price,
       p.compare_price, p.stock_quantity,
       p.is_active,
+      p.seller_id,
       s.shop_name AS seller_name
      FROM cart_items ci
      JOIN products p ON ci.product_id = p.id
