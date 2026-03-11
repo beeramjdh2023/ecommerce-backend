@@ -74,7 +74,12 @@ export const updateCategoryService = async (id, data) => {
     throw new Error('Category with this name already exists')
   }
 
-  return await updateCategory(id, { ...data, slug })
+  const updated= await updateCategory(id, { ...data, slug })
+  
+  // invalidate category cache
+  await invalidateCachePattern('cache:/api/v1/categories*')
+
+  return updated;
 }
 
 export const deleteCategoryService = async (id) => {
@@ -83,5 +88,8 @@ export const deleteCategoryService = async (id) => {
     throw new Error('Category not found')
   }
   await deleteCategory(id)
+
+  // invalidate category cache
+  await invalidateCachePattern('cache:/api/v1/categories*')
   return { message: 'Category deleted successfully' }
 }

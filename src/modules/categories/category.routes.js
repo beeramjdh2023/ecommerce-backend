@@ -5,12 +5,15 @@ import {
 } from './category.controller.js'
 import { authenticate } from '../../middlewares/auth.middleware.js'
 import { authorize } from '../../middlewares/role.middleware.js'
+import { cacheMiddleware } from '../../middlewares/cache.middleware.js'
 
 const router = express.Router()
 
+// categories change rarely — cache longer
 // public routes
-router.get('/', getAllCategoriesController)
-router.get('/:id', getCategoryController)
+router.get('/', cacheMiddleware(300), getAllCategoriesController)    // 5 minutes
+router.get('/:id', cacheMiddleware(300), getCategoryController)     // 5 minutes
+
 
 // admin only routes
 router.post('/', authenticate, authorize('ADMIN'), createCategoryController)

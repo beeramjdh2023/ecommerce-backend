@@ -77,7 +77,12 @@ export const updateProductService = async (id, user_id, data) => {
   }
 
   const slug = slugify(data.name, { lower: true, strict: true })
-  return await updateProduct(id, { ...data, slug })
+  const updated= await updateProduct(id, { ...data, slug })
+
+  // invalidate cache for this product and all product listings
+  await invalidateCachePattern('cache:/api/v1/products*');
+
+  return updated;
 }
 
 export const deleteProductService = async (id, user_id, role) => {
@@ -94,5 +99,9 @@ export const deleteProductService = async (id, user_id, role) => {
   }
 
   await deleteProduct(id)
+  
+  // invalidate cache for this product and all product listings
+  await invalidateCachePattern('cache:/api/v1/products*')
+
   return { message: 'Product deleted successfully' }
 }
