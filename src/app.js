@@ -9,7 +9,8 @@ import cartRoutes from './modules/cart/cart.routes.js'
 import orderRoutes from './modules/orders/order.routes.js'
 import addressRoutes from './modules/addresses/address.routes.js'
 import paymentRoutes from './modules/payments/payment.routes.js'
-
+import reviewRoutes from './modules/reviews/review.routes.js'
+import wishlistRoutes from './modules/wishlist/wishlist.routes.js'
 
 dotenv.config();
 
@@ -51,6 +52,8 @@ app.use('/api/v1/cart', cartRoutes)
 app.use('/api/v1/addresses', addressRoutes)
 app.use('/api/v1/orders', orderRoutes)
 app.use('/api/v1/payments', paymentRoutes)
+app.use('/api/v1/reviews', reviewRoutes)
+app.use('/api/v1/wishlist', wishlistRoutes)
 
 app.get("/",(req,res)=>{
     res.status(200).json({message:"ecommerce api is running "});
