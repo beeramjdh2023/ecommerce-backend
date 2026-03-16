@@ -14,7 +14,7 @@ export const cacheMiddleware = (ttlSeconds) => async (req, res, next) => {
 
     console.log(`Cache MISS: ${key}`)
 
-    // intercept res.json to cache the response
+    // override res.json to cache the response
     const originalJson = res.json.bind(res)
     res.json = async (body) => {
       // store in Redis with TTL
