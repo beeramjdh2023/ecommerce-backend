@@ -11,11 +11,13 @@ import addressRoutes from './modules/addresses/address.routes.js'
 import paymentRoutes from './modules/payments/payment.routes.js'
 import reviewRoutes from './modules/reviews/review.routes.js'
 import wishlistRoutes from './modules/wishlist/wishlist.routes.js'
+import { rateLimiter } from './middlewares/rateLimiter.middleware.js'
 
 dotenv.config();
 
 const app=express();
 
+app.use(rateLimiter(100, 60, 'global'))
 
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/v1/payments/webhook') {
