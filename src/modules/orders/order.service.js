@@ -1,6 +1,8 @@
 import { placeOrder, getOrderById, getUserOrders, updateOrderStatus } from './order.repository.js'
 import { getCartWithItems } from '../cart/cart.repository.js'
 import { getAddressById } from '../addresses/address.repository.js'
+import { addOrderConfirmationJob } from '../../queues/order.producer.js'
+import { findUserById } from '../auth/auth.repository.js'
 
 // valid status transitions — state machine
 const STATUS_TRANSITIONS = {
@@ -41,6 +43,16 @@ export const placeOrderService = async (user_id, address_id) => {
 
   // 5. get full order details
   const order = await getOrderById(order_id)
+
+  // get user email
+  const user = await findUserById(user_id)
+
+  // add job to queue — fire and forget
+  // do NOT await — we don't want to wait for email
+  addOrderConfirmationJob(
+    { ...order, user_name: user.name },
+    user.email
+  ).catch(err => console.error('Failed to add email job:', err.message))
 
   return order
 }
@@ -90,5 +102,16 @@ export const updateOrderStatusService = async (order_id, new_status, user_id, ro
   }
 
   await updateOrderStatus(order_id, new_status, `Status changed to ${new_status}`)
+
+  // get user for email
+  const user = await findUserById(order.user_id)
+  const updatedOrder = await getOrderById(order_id)
+
+  // fire and forget
+  addOrderStatusUpdateJob(
+    { ...updatedOrder, user_name: user.name },
+    user.email
+  ).catch(err => console.error('Failed to add status update job:', err.message))
+
   return { message: `Order status updated to ${new_status}` }
 }
