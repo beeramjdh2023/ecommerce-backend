@@ -1,7 +1,7 @@
 import pool from '../../config/db.js'
 import { v4 as uuidv4 } from 'uuid'
 
-export const placeOrder = async (user_id, address_id, cartItems) => {
+export const placeOrder = async (user_id, address_id, cartItems, total_amount, discount_amount, final_amount, coupon_code) => {
   const conn = await pool.getConnection()
 
   try {
@@ -21,16 +21,16 @@ export const placeOrder = async (user_id, address_id, cartItems) => {
       }
     }
 
-    // 2. calculate totals
-    const total_amount = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-
-    // 3. create order
+    
+    // 2. create order
     const order_id = uuidv4()
     await conn.execute(
-      `INSERT INTO orders (id, user_id, address_id, total_amount, final_amount)
-       VALUES (?, ?, ?, ?, ?)`,
-      [order_id, user_id, address_id, total_amount, total_amount]
+      `INSERT INTO orders (id, user_id, address_id, total_amount, discount_amount, final_amount, coupon_code)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [order_id, user_id, address_id, total_amount, discount_amount, final_amount, coupon_code || null]
     )
+
+
 
     // 4. create order items + deduct stock
     for (const item of cartItems) {
@@ -42,7 +42,6 @@ export const placeOrder = async (user_id, address_id, cartItems) => {
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [order_item_id, order_id, item.product_id, item.seller_id, item.quantity, item.price, item.price * item.quantity]
       )
-
       // deduct stock
       await conn.execute(
         'UPDATE products SET stock_quantity = stock_quantity - ?, total_sold = total_sold + ? WHERE id = ?',
@@ -51,7 +50,7 @@ export const placeOrder = async (user_id, address_id, cartItems) => {
     }
 
     // 5. record initial status in history
-    const history_id = uuidv4()
+     const history_id = uuidv4()
     await conn.execute(
       'INSERT INTO order_status_history (id, order_id, status, note) VALUES (?, ?, ?, ?)',
       [history_id, order_id, 'PENDING', 'Order placed successfully']

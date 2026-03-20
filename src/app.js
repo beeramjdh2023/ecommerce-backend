@@ -12,6 +12,10 @@ import paymentRoutes from './modules/payments/payment.routes.js'
 import reviewRoutes from './modules/reviews/review.routes.js'
 import wishlistRoutes from './modules/wishlist/wishlist.routes.js'
 import { rateLimiter } from './middlewares/rateLimiter.middleware.js'
+import sellerRoutes from './modules/seller/seller.routes.js'
+import couponRoutes from './modules/coupons/coupon.routes.js'
+
+
 
 dotenv.config();
 
@@ -56,6 +60,8 @@ app.use('/api/v1/orders', orderRoutes)
 app.use('/api/v1/payments', paymentRoutes)
 app.use('/api/v1/reviews', reviewRoutes)
 app.use('/api/v1/wishlist', wishlistRoutes)
+app.use('/api/v1/sellers', sellerRoutes)
+app.use('/api/v1/coupons', couponRoutes)
 
 app.get("/",(req,res)=>{
     res.status(200).json({message:"ecommerce api is running "});

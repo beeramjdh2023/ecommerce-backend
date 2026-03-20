@@ -5,11 +5,11 @@ import {
 
 export const placeOrderController = async (req, res) => {
   try {
-    const { address_id } = req.body
+    const { address_id, coupon_code } = req.body
     if (!address_id) {
       return res.status(400).json({ message: 'address_id is required' })
     }
-    const order = await placeOrderService(req.user.id, address_id)
+    const order = await placeOrderService(req.user.id, address_id, coupon_code)
     res.status(201).json({ message: 'Order placed successfully', order })
   } catch (err) {
     res.status(400).json({ message: err.message })

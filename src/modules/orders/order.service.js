@@ -3,6 +3,7 @@ import { getCartWithItems } from '../cart/cart.repository.js'
 import { getAddressById } from '../addresses/address.repository.js'
 import { addOrderConfirmationJob } from '../../queues/order.producer.js'
 import { findUserById } from '../auth/auth.repository.js'
+import { validateCouponService, recordCouponUsageService } from '../coupons/coupon.service.js'
 
 // valid status transitions — state machine
 const STATUS_TRANSITIONS = {
@@ -16,7 +17,7 @@ const STATUS_TRANSITIONS = {
   RETURNED: []
 }
 
-export const placeOrderService = async (user_id, address_id) => {
+export const placeOrderService = async (user_id, address_id, coupon_code = null) => {
 
   // 1. validate address belongs to user
   const address = await getAddressById(address_id, user_id)
@@ -38,9 +39,36 @@ export const placeOrderService = async (user_id, address_id) => {
     throw new Error(`Some items are unavailable: ${unavailableItems.map(i => i.name).join(', ')}`)
   }
 
-  // 4. place order inside transaction
-  const order_id = await placeOrder(user_id, address_id, cart.items)
+  // calculate total
+  const total_amount = cart.items.reduce(
+    (sum, item) => sum + (item.price * item.quantity), 0
+  )
 
+   // apply coupon if provided
+  let discount_amount = 0
+  let final_amount = total_amount
+  let coupon_id = null
+
+  if (coupon_code) {
+    const couponResult = await validateCouponService(coupon_code, user_id, total_amount)
+    discount_amount = couponResult.discount_amount
+    final_amount = couponResult.final_amount
+    coupon_id = couponResult.coupon_id
+  }
+
+
+  // 4. place order inside transaction
+  const order_id = await placeOrder(
+    user_id, address_id, cart.items,
+    total_amount, discount_amount, final_amount, coupon_code
+  )
+
+   // record coupon usage after order placed
+  if (coupon_id) {
+    await recordCouponUsageService({ coupon_id, user_id, order_id })
+  }
+
+  
   // 5. get full order details
   const order = await getOrderById(order_id)
 

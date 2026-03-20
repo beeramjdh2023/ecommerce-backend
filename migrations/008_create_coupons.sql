@@ -1,0 +1,28 @@
+USE ecommerce_db;
+
+CREATE TABLE coupons (
+  id VARCHAR(36) PRIMARY KEY,
+  code VARCHAR(50) NOT NULL UNIQUE,
+  type ENUM('FLAT', 'PERCENTAGE') NOT NULL,
+  value DECIMAL(10,2) NOT NULL,
+  min_order_amount DECIMAL(10,2) DEFAULT 0,
+  max_discount DECIMAL(10,2),
+  usage_limit INT,
+  used_count INT DEFAULT 0,
+  expires_at TIMESTAMP,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE coupon_usage (
+  id VARCHAR(36) PRIMARY KEY,
+  coupon_id VARCHAR(36) NOT NULL,
+  user_id VARCHAR(36) NOT NULL,
+  order_id VARCHAR(36) NOT NULL,
+  used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_coupon (user_id, coupon_id)
+);
