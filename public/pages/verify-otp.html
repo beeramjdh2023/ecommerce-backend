@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify OTP — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+
+      <div class="auth-logo">
+        <h1>ShopX</h1>
+        <p>Your premium shopping destination</p>
+      </div>
+
+      <h2 class="auth-title">Verify your email</h2>
+      <p class="auth-subtitle" id="subtitle">
+        Enter the 6-digit code sent to your email
+      </p>
+
+      <div id="alert" class="alert"></div>
+
+      <div class="otp-container">
+        <input type="text" class="otp-input" maxlength="1" />
+        <input type="text" class="otp-input" maxlength="1" />
+        <input type="text" class="otp-input" maxlength="1" />
+        <input type="text" class="otp-input" maxlength="1" />
+        <input type="text" class="otp-input" maxlength="1" />
+        <input type="text" class="otp-input" maxlength="1" />
+      </div>
+
+      <button class="btn btn-primary" id="verifyBtn">
+        Verify Email
+      </button>
+
+      <p style="text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 14px;">
+        Didn't receive code?
+        <a href="#" id="resendBtn">Resend OTP</a>
+      </p>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { showAlert, setLoading, saveToken, saveUser } from '../js/utils.js'
+
+    const email = localStorage.getItem('pending_email')
+
+    // if no pending email — redirect to register
+    if (!email) {
+      window.location.href = '/pages/register.html'
+    }
+
+    document.getElementById('subtitle').textContent =
+      `Enter the 6-digit code sent to ${email}`
+
+    const inputs = document.querySelectorAll('.otp-input')
+    const verifyBtn = document.getElementById('verifyBtn')
+
+    // OTP input auto focus next
+    inputs.forEach((input, index) => {
+      input.addEventListener('input', (e) => {
+        const value = e.target.value
+
+        // only allow numbers
+        if (!/^\d$/.test(value)) {
+          e.target.value = ''
+          return
+        }
+
+        e.target.classList.add('filled')
+
+        // move to next input
+        if (index < inputs.length - 1) {
+          inputs[index + 1].focus()
+        }
+
+        // auto submit when all filled
+        const otp = Array.from(inputs).map(i => i.value).join('')
+        if (otp.length === 6) {
+          verifyBtn.click()
+        }
+      })
+
+      // handle backspace
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+          inputs[index - 1].focus()
+          inputs[index - 1].classList.remove('filled')
+        }
+      })
+
+      // handle paste
+      input.addEventListener('paste', (e) => {
+        e.preventDefault()
+        const pasted = e.clipboardData.getData('text').slice(0, 6)
+        pasted.split('').forEach((char, i) => {
+          if (inputs[i] && /^\d$/.test(char)) {
+            inputs[i].value = char
+            inputs[i].classList.add('filled')
+          }
+        })
+        verifyBtn.click()
+      })
+    })
+
+    verifyBtn.addEventListener('click', async () => {
+      const otp = Array.from(inputs).map(i => i.value).join('')
+
+      if (otp.length !== 6) {
+        showAlert('alert', 'Please enter the complete 6-digit OTP')
+        return
+      }
+
+      setLoading(verifyBtn, true)
+
+      const result = await api.auth.verifyOTP({ email, otp })
+
+      setLoading(verifyBtn, false)
+
+      if (result.user) {
+        localStorage.removeItem('pending_email')
+        showAlert('alert', 'Email verified! Redirecting...', 'success')
+        setTimeout(() => {
+          window.location.href = '/pages/login.html'
+        }, 1500)
+      } else {
+        showAlert('alert', result.message || 'Invalid OTP')
+        // clear inputs on wrong OTP
+        inputs.forEach(i => {
+          i.value = ''
+          i.classList.remove('filled')
+        })
+        inputs[0].focus()
+      }
+    })
+
+    // resend OTP
+    document.getElementById('resendBtn').addEventListener('click', async (e) => {
+      e.preventDefault()
+      const result = await api.auth.register({
+        name: 'User',
+        email,
+        password: 'temp123'
+      })
+      if (result.message?.includes('OTP')) {
+        showAlert('alert', 'New OTP sent to your email', 'success')
+      }
+    })
+  </script>
+</body>
+</html>

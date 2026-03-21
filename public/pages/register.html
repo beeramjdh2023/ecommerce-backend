@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+
+      <div class="auth-logo">
+        <h1>ShopX</h1>
+        <p>Your premium shopping destination</p>
+      </div>
+
+      <h2 class="auth-title">Create account</h2>
+      <p class="auth-subtitle">Join thousands of shoppers</p>
+
+      <div id="alert" class="alert"></div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input
+          type="text"
+          id="name"
+          class="form-input"
+          placeholder="Beeram Chand"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          class="form-input"
+          placeholder="beeram@gmail.com"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          placeholder="Minimum 6 characters"
+        />
+      </div>
+
+      <button class="btn btn-primary" id="registerBtn">
+        Create Account
+      </button>
+
+      <div class="divider">or</div>
+
+      <p style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+        Already have an account?
+        <a href="/pages/login.html">Sign in</a>
+      </p>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { showAlert, setLoading, redirectIfLoggedIn } from '../js/utils.js'
+
+    redirectIfLoggedIn()
+
+    const registerBtn = document.getElementById('registerBtn')
+
+    registerBtn.addEventListener('click', async () => {
+      const name = document.getElementById('name').value.trim()
+      const email = document.getElementById('email').value.trim()
+      const password = document.getElementById('password').value.trim()
+
+      if (!name || !email || !password) {
+        showAlert('alert', 'All fields are required')
+        return
+      }
+
+      if (password.length < 6) {
+        showAlert('alert', 'Password must be at least 6 characters')
+        return
+      }
+
+      setLoading(registerBtn, true)
+
+      const result = await api.auth.register({ name, email, password })
+
+      setLoading(registerBtn, false)
+
+      if (result.message === 'OTP sent to your email') {
+        // save email for OTP page
+        localStorage.setItem('pending_email', email)
+        window.location.href = '/pages/verify-otp.html'
+      } else {
+        showAlert('alert', result.message || 'Registration failed')
+      }
+    })
+  </script>
+</body>
+</html>

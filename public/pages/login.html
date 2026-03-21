@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="auth-container">
+    <div class="auth-card">
+
+      <div class="auth-logo">
+        <h1>ShopX</h1>
+        <p>Your premium shopping destination</p>
+      </div>
+
+      <h2 class="auth-title">Welcome back</h2>
+      <p class="auth-subtitle">Sign in to your account</p>
+
+      <div id="alert" class="alert"></div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input
+          type="email"
+          id="email"
+          class="form-input"
+          placeholder="beeram@gmail.com"
+          autocomplete="email"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input
+          type="password"
+          id="password"
+          class="form-input"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+        />
+      </div>
+
+      <button class="btn btn-primary" id="loginBtn">
+        Sign In
+      </button>
+
+      <div class="divider">or</div>
+
+      <p style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+        Don't have an account?
+        <a href="/pages/register.html">Create one</a>
+      </p>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { showAlert, setLoading, saveToken, saveUser, redirectIfLoggedIn } from '../js/utils.js'
+
+    // redirect if already logged in
+    redirectIfLoggedIn()
+
+    const loginBtn = document.getElementById('loginBtn')
+    const emailInput = document.getElementById('email')
+    const passwordInput = document.getElementById('password')
+
+    // allow login with Enter key
+    passwordInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') loginBtn.click()
+    })
+
+    loginBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim()
+      const password = passwordInput.value.trim()
+
+      // validation
+      if (!email || !password) {
+        showAlert('alert', 'Please enter email and password')
+        return
+      }
+
+      setLoading(loginBtn, true)
+
+      const result = await api.auth.login({ email, password })
+
+      setLoading(loginBtn, false)
+
+      if (result.accessToken) {
+        saveToken(result.accessToken)
+        saveUser(result.user)
+        window.location.href = '/pages/products.html'
+      } else {
+        showAlert('alert', result.message || 'Login failed')
+      }
+    })
+  </script>
+</body>
+</html>

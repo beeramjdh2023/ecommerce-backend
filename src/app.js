@@ -14,12 +14,17 @@ import wishlistRoutes from './modules/wishlist/wishlist.routes.js'
 import { rateLimiter } from './middlewares/rateLimiter.middleware.js'
 import sellerRoutes from './modules/seller/seller.routes.js'
 import couponRoutes from './modules/coupons/coupon.routes.js'
-
+import path from 'path'
+import { fileURLToPath } from 'url'
 
 
 dotenv.config();
 
 const app=express();
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+
 
 app.use(rateLimiter(100, 60, 'global'))
 
@@ -32,6 +37,8 @@ app.use((req, res, next) => {
 })
 
 app.use(cookieParser());
+
+app.use(express.static(path.join(__dirname, '../public')))
 
 import pool from './config/db.js'
 
