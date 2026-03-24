@@ -151,3 +151,27 @@ export const logoutService = async (token) => {
 }
 
 
+export const resendOTPService = async (email) => {
+  // check if pending user exists in Redis
+  const pendingData = await redis.get(`pending_user:${email}`)
+  if (!pendingData) {
+    throw new Error('Session expired. Please register again')
+  }
+
+  const data = JSON.parse(pendingData)
+
+  // generate new OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString()
+
+  // update Redis with new OTP — reset TTL to 10 minutes
+  await redis.setex(
+    `pending_user:${email}`,
+    600,
+    JSON.stringify({ ...data, otp })
+  )
+
+  console.log(`New OTP for ${email}: ${otp}`)
+  return { message: 'New OTP sent to your email' }
+}
+
+

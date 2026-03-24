@@ -139,17 +139,43 @@
     })
 
     // resend OTP
-    document.getElementById('resendBtn').addEventListener('click', async (e) => {
-      e.preventDefault()
-      const result = await api.auth.register({
-        name: 'User',
-        email,
-        password: 'temp123'
-      })
-      if (result.message?.includes('OTP')) {
-        showAlert('alert', 'New OTP sent to your email', 'success')
-      }
+   document.getElementById('resendBtn').addEventListener('click', async (e) => {
+  e.preventDefault()
+
+  const btn = e.target
+  btn.style.pointerEvents = 'none'
+  btn.textContent = 'Sending...'
+
+  const result = await api.auth.resendOTP({ email })
+ 
+  if (result.message?.includes('OTP')) {
+    showAlert('alert', 'New OTP sent to your email', 'success')
+
+    // clear all boxes
+    inputs.forEach(i => {
+      i.value = ''
+      i.classList.remove('filled')
     })
+    inputs[0].focus()
+
+    // disable resend for 30 seconds
+    let seconds = 30
+    const interval = setInterval(() => {
+      btn.textContent = `Resend in ${seconds}s`
+      seconds--
+      if (seconds < 0) {
+        clearInterval(interval)
+        btn.textContent = 'Resend OTP'
+        btn.style.pointerEvents = 'auto'
+      }
+    }, 1000)
+
+  } else {
+    showAlert('alert', result.message || 'Failed to resend OTP')
+    btn.textContent = 'Resend OTP'
+    btn.style.pointerEvents = 'auto'
+  }
+})
   </script>
 </body>
 </html>

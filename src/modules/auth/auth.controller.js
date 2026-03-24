@@ -1,5 +1,5 @@
 
-import { registerService, verifyOTPService, loginService, refreshTokenService, logoutService } from './auth.services.js'
+import { registerService, verifyOTPService, loginService, refreshTokenService, logoutService,resendOTPService } from './auth.services.js'
 
 
 
@@ -23,6 +23,19 @@ export const register = async (req, res) => {
   } catch (err) {
     const statuscode=err.message.includes("already") ? 409:400;
     res.status(statuscode).json({ message: err.message })
+  }
+}
+
+export const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' })
+    }
+    const result = await resendOTPService(email)
+    res.status(200).json(result)
+  } catch (err) {
+    res.status(400).json({ message: err.message })
   }
 }
 

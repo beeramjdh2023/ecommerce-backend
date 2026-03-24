@@ -50,7 +50,8 @@ export const api = {
     verifyOTP: (data) => request('/auth/verify-otp', { method: 'POST', body: JSON.stringify(data) }),
     login: (data) => request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
     logout: () => request('/auth/logout', { method: 'POST' }),
-    refreshToken: () => request('/auth/refresh-token', { method: 'POST' })
+    refreshToken: () => request('/auth/refresh-token', { method: 'POST' }),
+    resendOTP: (data) => request('/auth/resend-otp', { method: 'POST', body: JSON.stringify(data) })
   },
 
   products: {

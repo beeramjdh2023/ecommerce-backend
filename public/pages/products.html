@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/products.css">
+  
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="/pages/products.html" class="navbar-brand">ShopX</a>
+    <div class="navbar-links">
+      <a href="/pages/products.html" class="navbar-link active">Products</a>
+      <a href="/pages/orders.html" class="navbar-link">Orders</a>
+      <span id="userRole" style="display:none">
+        <a href="/pages/seller-dashboard.html" class="navbar-link" id="sellerLink" style="display:none">Seller</a>
+        <a href="/pages/admin-dashboard.html" class="navbar-link" id="adminLink" style="display:none">Admin</a>
+      </span>
+      <a href="#" class="navbar-link" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="main-container">
+
+    <!-- SEARCH BAR TOP -->
+    <div style="display:flex; gap:12px; margin-bottom:8px;">
+      <div class="search-input-wrap" style="flex:1">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          type="text"
+          class="search-input"
+          id="searchInput"
+          placeholder="Search products..."
+          style="width:100%"
+        />
+      </div>
+      <select class="sort-select" id="sortSelect">
+        <option value="newest">Newest First</option>
+        <option value="price_low">Price: Low to High</option>
+        <option value="price_high">Price: High to Low</option>
+        <option value="rating">Top Rated</option>
+        <option value="popular">Most Popular</option>
+      </select>
+    </div>
+
+    <div class="products-layout">
+
+      <!-- FILTERS SIDEBAR -->
+      <aside class="filters-sidebar">
+        <h3 class="filter-title">Filters</h3>
+
+        <!-- Categories -->
+        <div class="filter-section">
+          <p class="filter-section-title">Category</p>
+          <div id="categoryFilters">
+            <label class="filter-option">
+              <input type="radio" name="category" value="" checked />
+              All Categories
+            </label>
+          </div>
+        </div>
+
+        <!-- Price Range -->
+        <div class="filter-section">
+          <p class="filter-section-title">Price Range</p>
+          <div class="price-inputs">
+            <input type="number" class="price-input" id="minPrice" placeholder="Min" />
+            <span class="price-separator">to</span>
+            <input type="number" class="price-input" id="maxPrice" placeholder="Max" />
+          </div>
+        </div>
+
+        <button class="btn-apply-filter" id="applyFilter">Apply Filters</button>
+        <button class="btn-clear-filter" id="clearFilter">Clear All</button>
+      </aside>
+
+      <!-- PRODUCTS MAIN -->
+      <main class="products-main">
+        <div class="products-header">
+          <p class="products-count" id="productsCount">Loading...</p>
+        </div>
+
+        <!-- PRODUCTS GRID -->
+        <div class="products-grid" id="productsGrid">
+          <!-- skeleton loaders -->
+          ${Array(8).fill(`
+            <div class="skeleton-card">
+              <div class="skeleton skeleton-image"></div>
+              <div class="skeleton-content">
+                <div class="skeleton skeleton-line short"></div>
+                <div class="skeleton skeleton-line medium"></div>
+                <div class="skeleton skeleton-line full"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- PAGINATION -->
+        <div class="pagination" id="pagination"></div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- CART FLOATING BUTTON -->
+  <a href="/pages/cart.html" class="cart-fab" id="cartFab">
+    <svg width="24" height="24" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <path d="M16 10a4 4 0 01-8 0"/>
+    </svg>
+    <span class="cart-fab-count" id="cartCount" style="display:none">0</span>
+  </a>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container"></div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { requireAuth, getUser, removeToken, showToast } from '../js/utils.js'
+
+    // protect page
+    requireAuth()
+
+    // show role based nav links
+    const user = getUser()
+    if (user) {
+      document.getElementById('userRole').style.display = 'block'
+      if (user.role === 'SELLER' || user.role === 'ADMIN') {
+        document.getElementById('sellerLink').style.display = 'block'
+      }
+      if (user.role === 'ADMIN') {
+        document.getElementById('adminLink').style.display = 'block'
+      }
+    }
+
+    // logout
+    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault()
+      await api.auth.logout()
+      removeToken()
+      window.location.href = '/pages/login.html'
+    })
+
+    // state
+    let currentPage = 1
+    let currentFilters = {}
+    let wishlistItems = []
+    let searchTimeout = null
+
+    // load categories for filter
+    const loadCategories = async () => {
+      const result = await api.categories.getAll()
+      if (!result.categories) return
+
+      const container = document.getElementById('categoryFilters')
+
+      // flatten tree to list
+      const flatCategories = []
+      const flatten = (cats) => {
+        cats.forEach(cat => {
+          flatCategories.push(cat)
+          if (cat.children?.length) flatten(cat.children)
+        })
+      }
+      flatten(result.categories)
+
+      const options = flatCategories.map(cat => `
+        <label class="filter-option">
+          <input type="radio" name="category" value="${cat.id}" />
+          ${cat.name}
+        </label>
+      `).join('')
+
+      container.innerHTML = `
+        <label class="filter-option">
+          <input type="radio" name="category" value="" checked />
+          All Categories
+        </label>
+        ${options}
+      `
+    }
+
+    // load wishlist to show heart state
+    const loadWishlist = async () => {
+      try {
+        const result = await api.wishlist.get()
+        if (result.wishlist?.items) {
+          wishlistItems = result.wishlist.items.map(i => i.product_id)
+        }
+      } catch (err) {}
+    }
+
+    // render stars
+    const renderStars = (rating) => {
+      const full = Math.floor(rating)
+      const empty = 5 - full
+      return '★'.repeat(full) + '☆'.repeat(empty)
+    }
+
+    // calculate discount percentage
+    const getDiscount = (price, comparePrice) => {
+      if (!comparePrice || comparePrice <= price) return null
+      return Math.round(((comparePrice - price) / comparePrice) * 100)
+    }
+
+    // render product card
+    const renderProduct = (product) => {
+      const discount = getDiscount(product.price, product.compare_price)
+      const inWishlist = wishlistItems.includes(product.product_id || product.id)
+      const isOutOfStock = product.stock_quantity === 0
+
+      return `
+        <div class="product-card" onclick="viewProduct('${product.id}')">
+          <div class="product-image">
+            ${product.primary_image
+              ? `<img src="${product.primary_image}" alt="${product.name}" />`
+              : '📦'
+            }
+            ${discount ? `<span class="product-badge">${discount}% OFF</span>` : ''}
+            <button
+              class="wishlist-btn ${inWishlist ? 'active' : ''}"
+              onclick="toggleWishlist(event, '${product.id}')"
+              title="${inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}"
+            >
+              ${inWishlist ? '❤️' : '🤍'}
+            </button>
+          </div>
+          <div class="product-info">
+            <p class="product-category">${product.category_name || ''}</p>
+            <h3 class="product-name">${product.name}</h3>
+            <div class="product-rating">
+              <span class="stars">${renderStars(product.average_rating || 0)}</span>
+              <span class="rating-count">(${product.total_reviews || 0})</span>
+            </div>
+            <div class="product-price-row">
+              <span class="product-price">₹${Number(product.price).toLocaleString('en-IN')}</span>
+              ${product.compare_price
+                ? `<span class="product-compare-price">₹${Number(product.compare_price).toLocaleString('en-IN')}</span>`
+                : ''
+              }
+              ${discount ? `<span class="discount-badge">${discount}% off</span>` : ''}
+            </div>
+            <button
+              class="btn-add-cart"
+              onclick="addToCart(event, '${product.id}')"
+              ${isOutOfStock ? 'disabled' : ''}
+            >
+              ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            </button>
+          </div>
+        </div>
+      `
+    }
+
+    // render skeleton loaders
+    const renderSkeletons = (count = 8) => {
+      return Array(count).fill(`
+        <div class="skeleton-card">
+          <div class="skeleton skeleton-image"></div>
+          <div class="skeleton-content">
+            <div class="skeleton skeleton-line short"></div>
+            <div class="skeleton skeleton-line medium"></div>
+            <div class="skeleton skeleton-line full"></div>
+            <div class="skeleton skeleton-line short"></div>
+          </div>
+        </div>
+      `).join('')
+    }
+
+    // render pagination
+    const renderPagination = (pagination) => {
+      const container = document.getElementById('pagination')
+      if (!pagination || pagination.total_pages <= 1) {
+        container.innerHTML = ''
+        return
+      }
+
+      const { page, total_pages } = pagination
+      let html = ''
+
+      // prev button
+      html += `
+        <button class="page-btn" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+          ←
+        </button>
+      `
+
+      // page numbers
+      for (let i = 1; i <= total_pages; i++) {
+        if (
+          i === 1 ||
+          i === total_pages ||
+          (i >= page - 1 && i <= page + 1)
+        ) {
+          html += `
+            <button class="page-btn ${i === page ? 'active' : ''}" onclick="goToPage(${i})">
+              ${i}
+            </button>
+          `
+        } else if (i === page - 2 || i === page + 2) {
+          html += `<span style="color:var(--text-muted)">...</span>`
+        }
+      }
+
+      // next button
+      html += `
+        <button class="page-btn" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+          →
+        </button>
+      `
+
+      container.innerHTML = html
+    }
+
+    // load products
+    const loadProducts = async () => {
+      const grid = document.getElementById('productsGrid')
+      grid.innerHTML = renderSkeletons()
+
+      const params = new URLSearchParams()
+      params.append('page', currentPage)
+      params.append('limit', 12)
+
+      if (currentFilters.category_id) params.append('category_id', currentFilters.category_id)
+      if (currentFilters.min_price) params.append('min_price', currentFilters.min_price)
+      if (currentFilters.max_price) params.append('max_price', currentFilters.max_price)
+      if (currentFilters.search) params.append('search', currentFilters.search)
+      if (currentFilters.sort) params.append('sort', currentFilters.sort)
+
+      const result = await api.products.getAll(`?${params.toString()}`)
+
+      if (!result.products) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-state-icon">😕</div>
+            <h3>Failed to load products</h3>
+            <p>Please try again</p>
+          </div>
+        `
+        return
+      }
+
+      // update count
+      document.getElementById('productsCount').innerHTML =
+        `Showing <span>${result.products.length}</span> of <span>${result.pagination.total}</span> products`
+
+      if (result.products.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-state-icon">🔍</div>
+            <h3>No products found</h3>
+            <p>Try different filters or search terms</p>
+          </div>
+        `
+        return
+      }
+
+      grid.innerHTML = result.products.map(renderProduct).join('')
+      renderPagination(result.pagination)
+    }
+
+    // load cart count for FAB
+    const loadCartCount = async () => {
+      try {
+        const result = await api.cart.get()
+        const count = result.cart?.total_items || 0
+        const badge = document.getElementById('cartCount')
+        if (count > 0) {
+          badge.style.display = 'flex'
+          badge.textContent = count
+        }
+      } catch (err) {}
+    }
+
+    // view product detail
+    window.viewProduct = (id) => {
+      window.location.href = `/pages/product-detail.html?id=${id}`
+    }
+
+    // toggle wishlist
+    window.toggleWishlist = async (e, productId) => {
+      e.stopPropagation()
+      const btn = e.currentTarget
+
+      if (wishlistItems.includes(productId)) {
+        await api.wishlist.remove(productId)
+        wishlistItems = wishlistItems.filter(id => id !== productId)
+        btn.innerHTML = '🤍'
+        btn.classList.remove('active')
+        showToast('Removed from wishlist')
+      } else {
+        await api.wishlist.add({ product_id: productId })
+        wishlistItems.push(productId)
+        btn.innerHTML = '❤️'
+        btn.classList.add('active')
+        showToast('Added to wishlist')
+      }
+    }
+
+    // add to cart
+    window.addToCart = async (e, productId) => {
+      e.stopPropagation()
+      const btn = e.currentTarget
+      btn.disabled = true
+      btn.textContent = 'Adding...'
+
+      const result = await api.cart.add({ product_id: productId, quantity: 1 })
+
+      if (result.message) {
+        showToast('Added to cart! 🛒')
+        loadCartCount()
+      } else {
+        showToast(result.message || 'Failed to add', 'error')
+      }
+
+      btn.disabled = false
+      btn.textContent = 'Add to Cart'
+    }
+
+    // go to page
+    window.goToPage = (page) => {
+      currentPage = page
+      loadProducts()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+
+    // search with debounce
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        currentFilters.search = e.target.value.trim()
+        currentPage = 1
+        loadProducts()
+      }, 500)
+    })
+
+    // sort change
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
+      currentFilters.sort = e.target.value
+      currentPage = 1
+      loadProducts()
+    })
+
+    // apply filters
+    document.getElementById('applyFilter').addEventListener('click', () => {
+      const selectedCategory = document.querySelector('input[name="category"]:checked')
+      currentFilters.category_id = selectedCategory?.value || null
+      currentFilters.min_price = document.getElementById('minPrice').value || null
+      currentFilters.max_price = document.getElementById('maxPrice').value || null
+      currentPage = 1
+      loadProducts()
+    })
+
+    // clear filters
+    document.getElementById('clearFilter').addEventListener('click', () => {
+      currentFilters = {}
+      currentPage = 1
+      document.querySelector('input[name="category"][value=""]').checked = true
+      document.getElementById('minPrice').value = ''
+      document.getElementById('maxPrice').value = ''
+      document.getElementById('searchInput').value = ''
+      document.getElementById('sortSelect').value = 'newest'
+      loadProducts()
+    })
+
+    // init
+    loadCategories()
+    loadWishlist()
+    loadProducts()
+    loadCartCount()
+  </script>
+</body>
+</html>
