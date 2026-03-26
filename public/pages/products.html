@@ -281,7 +281,7 @@
         container.innerHTML = ''
         return
       }
-
+ 
       const { page, total_pages } = pagination
       let html = ''
 
@@ -292,31 +292,38 @@
         </button>
       `
 
-      // page numbers
-      for (let i = 1; i <= total_pages; i++) {
-        if (
-          i === 1 ||
-          i === total_pages ||
-          (i >= page - 1 && i <= page + 1)
-        ) {
-          html += `
-            <button class="page-btn ${i === page ? 'active' : ''}" onclick="goToPage(${i})">
-              ${i}
-            </button>
-          `
-        } else if (i === page - 2 || i === page + 2) {
-          html += `<span style="color:var(--text-muted)">...</span>`
-        }
-      }
+  
 
-      // next button
-      html += `
-        <button class="page-btn" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
-          →
-        </button>
-      `
+let lastWasDots = false;
 
-      container.innerHTML = html
+for (let i = 1; i <= total_pages; i++) {
+  if (
+    i === 1 ||
+    i === total_pages ||
+    (i >= page - 1 && i <= page + 1)
+  ) {
+    html += `
+      <button class="page-btn ${i === page ? 'active' : ''}" onclick="goToPage(${i})">
+        ${i}
+      </button>
+    `;
+    lastWasDots = false; // reset when number is added
+  } else {
+    if (!lastWasDots) {
+      html += `<span style="color:var(--text-muted)">...</span>`;
+      lastWasDots = true; // prevent duplicate dots
+    }
+  }
+}
+
+// next button
+html += `
+  <button class="page-btn" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+    →
+  </button>
+`;
+
+     container.innerHTML = html;
     }
 
     // load products

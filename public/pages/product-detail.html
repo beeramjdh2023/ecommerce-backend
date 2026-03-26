@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/product-detail.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="/pages/products.html" class="navbar-brand">ShopX</a>
+    <div class="navbar-links">
+      <a href="/pages/products.html" class="navbar-link">Products</a>
+      <a href="/pages/orders.html" class="navbar-link">Orders</a>
+      <a href="#" class="navbar-link" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="detail-container">
+
+    <!-- BACK BUTTON -->
+    <div class="back-btn" onclick="history.back()">
+      ← Back to Products
+    </div>
+
+    <!-- PRODUCT TOP SECTION -->
+    <div class="product-detail-grid" id="productDetail">
+
+      <!-- skeleton while loading -->
+      <div class="skeleton" style="height:420px; border-radius:12px;"></div>
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="skeleton" style="height:14px; width:30%;"></div>
+        <div class="skeleton" style="height:28px; width:80%;"></div>
+        <div class="skeleton" style="height:16px; width:50%;"></div>
+        <div class="skeleton" style="height:36px; width:60%;"></div>
+        <div class="skeleton" style="height:1px;"></div>
+        <div class="skeleton" style="height:14px; width:40%;"></div>
+        <div class="skeleton" style="height:14px; width:35%;"></div>
+        <div class="skeleton" style="height:48px;"></div>
+      </div>
+
+    </div>
+
+    <!-- TABS -->
+    <div class="detail-tabs">
+      <div class="tab-header">
+        <button class="tab-btn active" onclick="switchTab('description')">
+          Description
+        </button>
+        <button class="tab-btn" onclick="switchTab('reviews')">
+          Reviews (<span id="reviewCount">0</span>)
+        </button>
+      </div>
+
+      <div class="tab-content active" id="tab-description">
+        <p class="description-text" id="descriptionText">Loading...</p>
+      </div>
+
+      <div class="tab-content" id="tab-reviews">
+        <div id="reviewsList">
+          <div class="no-reviews">Loading reviews...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container"></div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { requireAuth, getUser, removeToken, showToast } from '../js/utils.js'
+
+    requireAuth()
+
+    // logout
+    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault()
+      await api.auth.logout()
+      removeToken()
+      window.location.href = '/pages/login.html'
+    })
+
+    // get product id from URL
+    const params = new URLSearchParams(window.location.search)
+    const productId = params.get('id')
+
+    if (!productId) {
+      window.location.href = '/pages/products.html'
+    }
+
+    // state
+    let quantity = 1
+    let maxStock = 0
+    let inWishlist = false
+    let product = null
+
+    // render stars
+    const renderStars = (rating) => {
+      const full = Math.floor(rating)
+      const empty = 5 - full
+      return '★'.repeat(full) + '☆'.repeat(empty)
+    }
+
+    // calculate discount
+    const getDiscount = (price, comparePrice) => {
+      if (!comparePrice || comparePrice <= price) return null
+      return Math.round(((comparePrice - price) / comparePrice) * 100)
+    }
+
+    // switch tabs
+    window.switchTab = (tab) => {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'))
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'))
+
+      event.target.classList.add('active')
+      document.getElementById(`tab-${tab}`).classList.add('active')
+    }
+
+    // update quantity display
+    const updateQuantityDisplay = () => {
+      document.getElementById('qtyDisplay').textContent = quantity
+      document.getElementById('qtyMinus').disabled = quantity <= 1
+      document.getElementById('qtyPlus').disabled = quantity >= maxStock
+    }
+
+    // load product details
+    const loadProduct = async () => {
+      const result = await api.products.getOne(productId)
+
+      if (!result.product) {
+        window.location.href = '/pages/products.html'
+        return
+      }
+
+      product = result.product
+      maxStock = product.stock_quantity
+      const discount = getDiscount(product.price, product.compare_price)
+      const isOutOfStock = product.stock_quantity === 0
+
+      // check wishlist
+      const wishlistResult = await api.wishlist.get()
+      if (wishlistResult.wishlist?.items) {
+        inWishlist = wishlistResult.wishlist.items.some(i => i.product_id === productId)
+      }
+
+      // update page title
+      document.title = `${product.name} — ShopX`
+
+      // stock display
+      let stockHtml = ''
+      if (isOutOfStock) {
+        stockHtml = '<span class="stock-badge out">Out of Stock</span>'
+      } else if (product.stock_quantity < 10) {
+        stockHtml = `<span class="stock-badge low">Only ${product.stock_quantity} left</span>`
+      } else {
+        stockHtml = `<span class="stock-badge">${product.stock_quantity} available</span>`
+      }
+
+      // render product detail
+      document.getElementById('productDetail').innerHTML = `
+
+        <!-- IMAGE -->
+        <div class="product-detail-image">
+          ${product.images?.length
+            ? `<img src="${product.images[0].image_url}" alt="${product.name}" />`
+            : '📦'
+          }
+        </div>
+
+        <!-- INFO -->
+        <div class="product-detail-info">
+
+          <p class="detail-category">${product.category_name || ''}</p>
+          <h1 class="detail-name">${product.name}</h1>
+
+          <div class="detail-rating">
+            <span class="stars">${renderStars(product.average_rating || 0)}</span>
+            <span class="rating-count">${product.average_rating || 0} (${product.total_reviews || 0} reviews)</span>
+          </div>
+
+          <div class="detail-price-row">
+            <span class="detail-price">₹${Number(product.price).toLocaleString('en-IN')}</span>
+            ${product.compare_price
+              ? `<span class="detail-compare-price">₹${Number(product.compare_price).toLocaleString('en-IN')}</span>`
+              : ''
+            }
+            ${discount
+              ? `<span class="detail-discount">${discount}% OFF</span>`
+              : ''
+            }
+          </div>
+
+          <div class="detail-divider"></div>
+
+          <div class="detail-meta">
+            <div class="detail-meta-row">
+              <span class="detail-meta-label">Seller</span>
+              <span class="detail-meta-value">${product.seller_name || 'ShopX'}</span>
+            </div>
+            <div class="detail-meta-row">
+              <span class="detail-meta-label">Stock</span>
+              <span class="detail-meta-value">${stockHtml}</span>
+            </div>
+            <div class="detail-meta-row">
+              <span class="detail-meta-label">Rating</span>
+              <span class="detail-meta-value">${product.seller_rating || 'New Seller'}</span>
+            </div>
+          </div>
+
+          ${!isOutOfStock ? `
+          <div class="quantity-row">
+            <span class="quantity-label">Quantity</span>
+            <div class="quantity-selector">
+              <button class="qty-btn" id="qtyMinus" onclick="changeQty(-1)" disabled>−</button>
+              <span class="qty-display" id="qtyDisplay">1</span>
+              <button class="qty-btn" id="qtyPlus" onclick="changeQty(1)">+</button>
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="action-buttons">
+            <button
+              class="btn-detail-cart"
+              id="addCartBtn"
+              onclick="addToCart()"
+              ${isOutOfStock ? 'disabled' : ''}
+            >
+              ${isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+            </button>
+            <button
+              class="btn-detail-wishlist ${inWishlist ? 'active' : ''}"
+              id="wishlistBtn"
+              onclick="toggleWishlist()"
+            >
+              ${inWishlist ? '❤️ Wishlisted' : '🤍 Wishlist'}
+            </button>
+          </div>
+
+        </div>
+      `
+
+      // fill description tab
+      document.getElementById('descriptionText').textContent =
+        product.description || 'No description available.'
+    }
+
+    // load reviews
+    const loadReviews = async () => {
+      const result = await api.reviews.getProductReviews(productId)
+
+      document.getElementById('reviewCount').textContent =
+        result.pagination?.total || 0
+
+      if (!result.reviews || result.reviews.length === 0) {
+        document.getElementById('reviewsList').innerHTML =
+          '<div class="no-reviews">No reviews yet. Be the first to review!</div>'
+        return
+      }
+
+      document.getElementById('reviewsList').innerHTML = result.reviews.map(review => `
+        <div class="review-card">
+          <div class="review-top">
+            <span class="reviewer-name">${review.reviewer_name}</span>
+            <span class="review-date">
+              ${new Date(review.created_at).toLocaleDateString('en-IN')}
+            </span>
+          </div>
+          <div class="review-stars">${renderStars(review.rating)}</div>
+          ${review.comment
+            ? `<p class="review-comment">${review.comment}</p>`
+            : ''
+          }
+        </div>
+      `).join('')
+    }
+
+    // change quantity
+    window.changeQty = (delta) => {
+      quantity = Math.max(1, Math.min(maxStock, quantity + delta))
+      updateQuantityDisplay()
+    }
+
+    // add to cart
+    window.addToCart = async () => {
+      const btn = document.getElementById('addCartBtn')
+      btn.disabled = true
+      btn.textContent = 'Adding...'
+
+      const result = await api.cart.add({
+        product_id: productId,
+        quantity: quantity
+      })
+
+      if (result.message) {
+        showToast(`${quantity} item(s) added to cart! 🛒`)
+      } else {
+        showToast(result.message || 'Failed to add', 'error')
+      }
+
+      btn.disabled = false
+      btn.textContent = 'Add to Cart'
+    }
+
+    // toggle wishlist
+    window.toggleWishlist = async () => {
+      const btn = document.getElementById('wishlistBtn')
+
+      if (inWishlist) {
+        await api.wishlist.remove(productId)
+        inWishlist = false
+        btn.className = 'btn-detail-wishlist'
+        btn.textContent = '🤍 Wishlist'
+        showToast('Removed from wishlist')
+      } else {
+        await api.wishlist.add({ product_id: productId })
+        inWishlist = true
+        btn.className = 'btn-detail-wishlist active'
+        btn.textContent = '❤️ Wishlisted'
+        showToast('Added to wishlist')
+      }
+    }
+
+    // init
+    loadProduct()
+    loadReviews()
+  </script>
+</body>
+</html>

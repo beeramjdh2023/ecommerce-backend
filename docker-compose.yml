@@ -1,11 +1,16 @@
-
+# check reserve port first by command
+#  netsh interface ipv4 show excludedportrange protocol=tcp
+# if the port is reserved, you can change the port in .env file and docker-compose.yml file
+# then restart using below commands
+# docker compose down
+# docker-compose up -d
 
 services:
     redis:
       image: redis/redis-stack:latest
       container_name: ecommerce_redis
       ports:
-         - "6500:6379" 
+         - "7000:6379" 
          - "8001:8001"
       volumes:
         - redis_data:/data
