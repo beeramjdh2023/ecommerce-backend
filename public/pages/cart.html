@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/cart.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="/pages/products.html" class="navbar-brand">ShopX</a>
+    <div class="navbar-links">
+      <a href="/pages/products.html" class="navbar-link">Products</a>
+      <a href="/pages/orders.html" class="navbar-link">Orders</a>
+      <a href="#" class="navbar-link" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <div class="cart-container">
+    <h1 class="cart-title">Shopping Cart</h1>
+
+    <div id="cartContent">
+      <!-- loading state -->
+      <p style="color:var(--text-secondary)">Loading cart...</p>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { requireAuth, removeToken, showToast } from '../js/utils.js'
+
+    requireAuth()
+
+    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault()
+      await api.auth.logout()
+      removeToken()
+      window.location.href = '/pages/login.html'
+    })
+
+    // state
+    let cartData = null
+    let appliedCoupon = null
+
+    // load cart
+    const loadCart = async () => {
+      const result = await api.cart.get()
+
+      if (!result.cart || result.cart.items.length === 0) {
+        renderEmptyCart()
+        return
+      }
+
+      cartData = result.cart
+      renderCart()
+    }
+
+    // render empty cart
+    const renderEmptyCart = () => {
+      document.getElementById('cartContent').innerHTML = `
+        <div class="empty-cart">
+          <div class="empty-cart-icon">🛒</div>
+          <h2>Your cart is empty</h2>
+          <p>Add some products to get started</p>
+          <button class="btn-shop-now" onclick="window.location.href='/pages/products.html'">
+            Continue Shopping
+          </button>
+        </div>
+      `
+    }
+
+    // render cart
+    const renderCart = () => {
+      const availableItems = cartData.items.filter(i => i.is_available)
+      const unavailableItems = cartData.items.filter(i => !i.is_available)
+
+      const subtotal = cartData.total
+      const discount = appliedCoupon ? appliedCoupon.discount_amount : 0
+      const final = subtotal - discount
+
+      document.getElementById('cartContent').innerHTML = `
+        <div class="cart-layout">
+
+          <!-- CART ITEMS -->
+          <div class="cart-items">
+
+            ${unavailableItems.length ? `
+              <div style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);
+                          border-radius:var(--radius-sm); padding:12px 16px;
+                          font-size:13px; color:#fca5a5;">
+                ⚠️ ${unavailableItems.length} item(s) in your cart are unavailable
+              </div>
+            ` : ''}
+
+            ${cartData.items.map(item => `
+              <div class="cart-item ${!item.is_available ? 'unavailable' : ''}">
+
+                <div class="cart-item-image"
+                     onclick="window.location.href='/pages/product-detail.html?id=${item.product_id}'">
+                  📦
+                </div>
+
+                <div class="cart-item-details">
+                  <p class="cart-item-name"
+                     onclick="window.location.href='/pages/product-detail.html?id=${item.product_id}'">
+                    ${item.name}
+                  </p>
+                  <p class="cart-item-seller">${item.seller_name || 'ShopX'}</p>
+
+                  ${item.warning ? `
+                    <p class="cart-item-warning">⚠️ ${item.warning}</p>
+                  ` : ''}
+
+                  <div class="cart-item-bottom">
+                    <span class="cart-item-price">
+                      ₹${Number(item.price * item.quantity).toLocaleString('en-IN')}
+                    </span>
+
+                    <div class="cart-item-controls">
+                      ${item.is_available ? `
+                        <div class="qty-selector">
+                          <button class="qty-btn-small"
+                            onclick="updateQty('${item.product_id}', ${item.quantity - 1})"
+                            ${item.quantity <= 1 ? 'disabled' : ''}>
+                            −
+                          </button>
+                          <span class="qty-num">${item.quantity}</span>
+                          <button class="qty-btn-small"
+                            onclick="updateQty('${item.product_id}', ${item.quantity + 1})"
+                            ${item.quantity >= item.stock_quantity ? 'disabled' : ''}>
+                            +
+                          </button>
+                        </div>
+                      ` : ''}
+
+                      <button class="btn-remove"
+                        onclick="removeItem('${item.product_id}')">
+                        🗑 Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+
+          </div>
+
+          <!-- ORDER SUMMARY -->
+          <div class="order-summary">
+            <h3 class="summary-title">Order Summary</h3>
+
+            <div class="summary-row">
+              <span>Items (${availableItems.length})</span>
+              <span>₹${Number(subtotal).toLocaleString('en-IN')}</span>
+            </div>
+
+            ${appliedCoupon ? `
+              <div class="summary-row" style="color:var(--success)">
+                <span>Discount (${appliedCoupon.code})</span>
+                <span>− ₹${Number(discount).toLocaleString('en-IN')}</span>
+              </div>
+            ` : ''}
+
+            <div class="summary-row">
+              <span>Delivery</span>
+              <span style="color:var(--success)">FREE</span>
+            </div>
+
+            <div class="summary-row total">
+              <span>Total</span>
+              <span>₹${Number(final).toLocaleString('en-IN')}</span>
+            </div>
+
+            <!-- COUPON -->
+            <div class="coupon-section">
+              <span class="coupon-label">Have a coupon?</span>
+              ${appliedCoupon ? `
+                <div class="coupon-success">
+                  <span>✅ ${appliedCoupon.code} applied</span>
+                  <button class="btn-remove-coupon" onclick="removeCoupon()">Remove</button>
+                </div>
+              ` : `
+                <div class="coupon-input-row">
+                  <input
+                    type="text"
+                    class="coupon-input"
+                    id="couponInput"
+                    placeholder="Enter coupon code"
+                  />
+                  <button class="btn-apply-coupon" onclick="applyCoupon()">
+                    Apply
+                  </button>
+                </div>
+              `}
+            </div>
+
+            <button
+              class="btn-checkout"
+              onclick="proceedToCheckout()"
+              ${availableItems.length === 0 ? 'disabled' : ''}
+            >
+              Proceed to Checkout
+            </button>
+
+            <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:12px;">
+              <a href="/pages/products.html" style="color:var(--accent)">
+                ← Continue Shopping
+              </a>
+            </p>
+          </div>
+
+        </div>
+      `
+    }
+
+    // update quantity
+    window.updateQty = async (productId, newQty) => {
+      if (newQty < 1) {
+        await removeItem(productId)
+        return
+      }
+
+      const result = await api.cart.update(productId, { quantity: newQty })
+
+      if (result.message) {
+        await loadCart()
+      } else {
+        showToast(result.message || 'Failed to update', 'error')
+      }
+    }
+
+    // remove item
+    window.removeItem = async (productId) => {
+      const result = await api.cart.remove(productId)
+
+      if (result.message) {
+        showToast('Item removed from cart')
+        await loadCart()
+      } else {
+        showToast('Failed to remove item', 'error')
+      }
+    }
+
+    // apply coupon
+    window.applyCoupon = async () => {
+      const code = document.getElementById('couponInput').value.trim()
+
+      if (!code) {
+        showToast('Please enter a coupon code', 'error')
+        return
+      }
+
+      const result = await api.coupons.validate({
+        code,
+        order_amount: cartData.total
+      })
+
+      if (result.discount_amount !== undefined) {
+        appliedCoupon = {
+          code: result.code,
+          discount_amount: result.discount_amount
+        }
+        showToast(`Coupon applied! You save ₹${result.discount_amount}`)
+        renderCart()
+      } else {
+        showToast(result.message || 'Invalid coupon', 'error')
+      }
+    }
+
+    // remove coupon
+    window.removeCoupon = () => {
+      appliedCoupon = null
+      showToast('Coupon removed')
+      renderCart()
+    }
+
+    // proceed to checkout
+    window.proceedToCheckout = () => {
+      // save coupon to localStorage for orders page
+      if (appliedCoupon) {
+        localStorage.setItem('appliedCoupon', JSON.stringify(appliedCoupon))
+      } else {
+        localStorage.removeItem('appliedCoupon')
+      }
+      window.location.href = '/pages/orders.html?checkout=true'
+    }
+
+    // init
+    loadCart()
+  </script>
+</body>
+</html>

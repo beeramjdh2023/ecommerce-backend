@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/orders.css">
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="/pages/products.html" class="navbar-brand">ShopX</a>
+    <div class="navbar-links">
+      <a href="/pages/products.html" class="navbar-link">Products</a>
+      <a href="/pages/orders.html" class="navbar-link active">Orders</a>
+      <a href="#" class="navbar-link" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <!-- CHECKOUT MODAL -->
+  <div class="modal-overlay" id="checkoutModal" style="display:none">
+    <div class="modal">
+      <h2 class="modal-title">
+        Checkout
+        <button class="modal-close" onclick="closeCheckout()">✕</button>
+      </h2>
+
+      <h4 style="font-size:13px; color:var(--text-secondary);
+                 text-transform:uppercase; letter-spacing:0.5px;
+                 margin-bottom:12px;">
+        Select Delivery Address
+      </h4>
+
+      <div class="address-list" id="addressList">
+        <p style="color:var(--text-muted); font-size:14px;">Loading addresses...</p>
+      </div>
+
+      <button class="add-address-btn" onclick="toggleAddressForm()">
+        + Add New Address
+      </button>
+
+      <!-- ADD ADDRESS FORM -->
+      <div class="address-form" id="addressForm">
+        <input class="address-input" id="addrName" placeholder="Full Name" />
+        <input class="address-input" id="addrPhone" placeholder="Phone Number" />
+        <input class="address-input" id="addrStreet" placeholder="Street Address" />
+        <div class="form-row">
+          <input class="address-input" id="addrCity" placeholder="City" />
+          <input class="address-input" id="addrState" placeholder="State" />
+        </div>
+        <div class="form-row">
+          <input class="address-input" id="addrPincode" placeholder="Pincode" />
+          <input class="address-input" id="addrCountry" placeholder="Country" value="India" />
+        </div>
+        <button class="btn-save-address" onclick="saveAddress()">
+          Save Address
+        </button>
+      </div>
+
+      <!-- COUPON INFO -->
+      <div id="couponInfo" style="display:none; margin-bottom:16px;
+           background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3);
+           border-radius:var(--radius-sm); padding:10px 12px;
+           font-size:13px; color:var(--success);">
+      </div>
+
+      <button
+        class="btn-place-order"
+        id="placeOrderBtn"
+        onclick="placeOrder()"
+        disabled
+      >
+        Place Order
+      </button>
+    </div>
+  </div>
+
+  <!-- ORDER DETAIL MODAL -->
+  <div class="modal-overlay order-detail-modal" id="orderDetailModal" style="display:none">
+    <div class="modal" style="max-width:600px;">
+      <h2 class="modal-title">
+        Order Details
+        <button class="modal-close" onclick="closeOrderDetail()">✕</button>
+      </h2>
+      <div id="orderDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="orders-container">
+    <div class="orders-header">
+      <h1 class="orders-title">My Orders</h1>
+    </div>
+    <div id="ordersList">
+      <p style="color:var(--text-secondary)">Loading orders...</p>
+    </div>
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { requireAuth, removeToken, showToast } from '../js/utils.js'
+
+    requireAuth()
+
+    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault()
+      await api.auth.logout()
+      removeToken()
+      window.location.href = '/pages/login.html'
+    })
+
+    // state
+    let selectedAddressId = null
+    let appliedCoupon = null
+
+    // check if coming from checkout
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('checkout') === 'true') {
+      openCheckout()
+    }
+
+    // load applied coupon from localStorage
+    const savedCoupon = localStorage.getItem('appliedCoupon')
+    if (savedCoupon) {
+      appliedCoupon = JSON.parse(savedCoupon)
+    }
+
+    // load orders
+    const loadOrders = async () => {
+      const result = await api.orders.getAll()
+
+      if (!result.orders || result.orders.length === 0) {
+        document.getElementById('ordersList').innerHTML = `
+          <div class="empty-orders">
+            <div class="empty-orders-icon">📦</div>
+            <h2>No orders yet</h2>
+            <p>Start shopping to see your orders here</p>
+            <button class="btn-shop-now"
+              style="padding:12px 28px; background:var(--accent); color:white;
+                     border:none; border-radius:var(--radius-sm); font-size:15px;
+                     font-weight:600; cursor:pointer;"
+              onclick="window.location.href='/pages/products.html'">
+              Shop Now
+            </button>
+          </div>
+        `
+        return
+      }
+
+      document.getElementById('ordersList').innerHTML = result.orders.map(order => `
+        <div class="order-card" onclick="viewOrder('${order.id}')">
+          <div class="order-card-header">
+            <div>
+              <p class="order-id">Order #${order.id.slice(0, 8).toUpperCase()}</p>
+              <p class="order-date">
+                ${new Date(order.created_at).toLocaleDateString('en-IN', {
+                  day: 'numeric', month: 'short', year: 'numeric'
+                })}
+              </p>
+            </div>
+            <span class="order-status-badge status-${order.status}">
+              ${order.status.replace('_', ' ')}
+            </span>
+          </div>
+          <div class="order-card-footer">
+            <span class="order-items-count">${order.total_items} item(s)</span>
+            <span class="order-total">
+              ₹${Number(order.final_amount).toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+      `).join('')
+    }
+
+    // view order detail
+    window.viewOrder = async (orderId) => {
+      const result = await api.orders.getOne(orderId)
+      if (!result.order) return
+
+      const order = result.order
+      const canCancel = ['PENDING', 'CONFIRMED'].includes(order.status)
+
+      document.getElementById('orderDetailContent').innerHTML = `
+
+        <!-- STATUS -->
+        <div class="order-detail-section">
+          <h4>Status</h4>
+          <span class="order-status-badge status-${order.status}">
+            ${order.status.replace('_', ' ')}
+          </span>
+        </div>
+
+        <!-- ITEMS -->
+        <div class="order-detail-section">
+          <h4>Items</h4>
+          ${order.items.map(item => `
+            <div class="order-item-row">
+              <div>
+                <p class="order-item-name">${item.product_name}</p>
+                <p class="order-item-qty">Qty: ${item.quantity}</p>
+              </div>
+              <span class="order-item-price">
+                ₹${Number(item.total_price).toLocaleString('en-IN')}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- PRICE SUMMARY -->
+        <div class="order-detail-section">
+          <h4>Price Summary</h4>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:14px;">
+            <div style="display:flex; justify-content:space-between;">
+              <span style="color:var(--text-secondary)">Subtotal</span>
+              <span>₹${Number(order.total_amount).toLocaleString('en-IN')}</span>
+            </div>
+            ${Number(order.discount_amount) > 0 ? `
+              <div style="display:flex; justify-content:space-between; color:var(--success)">
+                <span>Discount</span>
+                <span>− ₹${Number(order.discount_amount).toLocaleString('en-IN')}</span>
+              </div>
+            ` : ''}
+            <div style="display:flex; justify-content:space-between;
+                        font-weight:700; font-size:16px; padding-top:8px;
+                        border-top:1px solid var(--border);">
+              <span>Total</span>
+              <span style="color:var(--accent)">
+                ₹${Number(order.final_amount).toLocaleString('en-IN')}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DELIVERY ADDRESS -->
+        <div class="order-detail-section">
+          <h4>Delivery Address</h4>
+          <p style="font-size:14px; color:var(--text-secondary); line-height:1.6;">
+            ${order.full_name}<br>
+            ${order.street}, ${order.city}<br>
+            ${order.state} - ${order.pincode}<br>
+            Phone: ${order.phone}
+          </p>
+        </div>
+
+        <!-- STATUS HISTORY -->
+        <div class="order-detail-section">
+          <h4>Status History</h4>
+          <div class="status-timeline">
+            ${order.history.map(h => `
+              <div class="timeline-item">
+                <div class="timeline-dot"></div>
+                <div>
+                  <p class="timeline-status">${h.status.replace('_', ' ')}</p>
+                  <p class="timeline-time">
+                    ${new Date(h.changed_at).toLocaleString('en-IN')}
+                  </p>
+                  ${h.note ? `<p style="font-size:12px; color:var(--text-muted)">${h.note}</p>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        ${canCancel ? `
+          <button class="cancel-btn" onclick="cancelOrder('${order.id}')">
+            Cancel Order
+          </button>
+        ` : ''}
+      `
+
+      document.getElementById('orderDetailModal').style.display = 'flex'
+    }
+
+    // close order detail
+    window.closeOrderDetail = () => {
+      document.getElementById('orderDetailModal').style.display = 'none'
+    }
+
+    // open checkout
+    window.openCheckout = async () => {
+      document.getElementById('checkoutModal').style.display = 'flex'
+
+      // show coupon info if applied
+      if (appliedCoupon) {
+        const couponEl = document.getElementById('couponInfo')
+        couponEl.style.display = 'block'
+        couponEl.textContent =
+          `✅ Coupon "${appliedCoupon.code}" applied — ₹${appliedCoupon.discount_amount} off`
+      }
+
+      await loadAddresses()
+    }
+
+    // close checkout
+    window.closeCheckout = () => {
+      document.getElementById('checkoutModal').style.display = 'none'
+      // remove checkout param from URL
+      window.history.replaceState({}, '', '/pages/orders.html')
+    }
+
+    // load addresses
+    const loadAddresses = async () => {
+      const result = await api.addresses.getAll()
+      const addresses = result.addresses || []
+
+      if (addresses.length === 0) {
+        document.getElementById('addressList').innerHTML =
+          '<p style="color:var(--text-muted); font-size:14px;">No addresses saved. Add one below.</p>'
+        return
+      }
+
+      document.getElementById('addressList').innerHTML = addresses.map(addr => `
+        <div
+          class="address-card ${addr.is_default ? 'selected' : ''}"
+          onclick="selectAddress('${addr.id}', this)"
+          id="addr-${addr.id}"
+        >
+          <p class="address-card-name">${addr.full_name} · ${addr.phone}</p>
+          <p class="address-card-details">
+            ${addr.street}, ${addr.city}, ${addr.state} - ${addr.pincode}
+          </p>
+        </div>
+      `).join('')
+
+      // auto select default address
+      const defaultAddr = addresses.find(a => a.is_default)
+      if (defaultAddr) {
+        selectedAddressId = defaultAddr.id
+        document.getElementById('placeOrderBtn').disabled = false
+      }
+    }
+
+    // select address
+    window.selectAddress = (id, el) => {
+      document.querySelectorAll('.address-card').forEach(c => c.classList.remove('selected'))
+      el.classList.add('selected')
+      selectedAddressId = id
+      document.getElementById('placeOrderBtn').disabled = false
+    }
+
+    // toggle address form
+    window.toggleAddressForm = () => {
+      const form = document.getElementById('addressForm')
+      form.classList.toggle('show')
+    }
+
+    // save address
+    window.saveAddress = async () => {
+      const data = {
+        full_name: document.getElementById('addrName').value.trim(),
+        phone: document.getElementById('addrPhone').value.trim(),
+        street: document.getElementById('addrStreet').value.trim(),
+        city: document.getElementById('addrCity').value.trim(),
+        state: document.getElementById('addrState').value.trim(),
+        pincode: document.getElementById('addrPincode').value.trim(),
+        country: document.getElementById('addrCountry').value.trim() || 'India',
+        is_default: false
+      }
+
+      if (!data.full_name || !data.phone || !data.street || !data.city ||
+          !data.state || !data.pincode) {
+        showToast('Please fill all address fields', 'error')
+        return
+      }
+
+      const result = await api.addresses.create(data)
+
+      if (result.address) {
+        showToast('Address saved successfully')
+        document.getElementById('addressForm').classList.remove('show')
+        await loadAddresses()
+      } else {
+        showToast(result.message || 'Failed to save address', 'error')
+      }
+    }
+
+    // place order
+    window.placeOrder = async () => {
+      if (!selectedAddressId) {
+        showToast('Please select a delivery address', 'error')
+        return
+      }
+
+      const btn = document.getElementById('placeOrderBtn')
+      btn.disabled = true
+      btn.textContent = 'Placing Order...'
+
+      const orderData = { address_id: selectedAddressId }
+      if (appliedCoupon) {
+        orderData.coupon_code = appliedCoupon.code
+      }
+
+      const result = await api.orders.place(orderData)
+
+      btn.disabled = false
+      btn.textContent = 'Place Order'
+
+      if (result.order) {
+        localStorage.removeItem('appliedCoupon')
+        appliedCoupon = null
+        showToast('Order placed successfully! 🎉')
+        closeCheckout()
+        await loadOrders()
+      } else {
+        showToast(result.message || 'Failed to place order', 'error')
+      }
+    }
+
+    // cancel order
+    window.cancelOrder = async (orderId) => {
+      const result = await api.orders.updateStatus(orderId, { status: 'CANCELLED' })
+
+      if (result.message) {
+        showToast('Order cancelled successfully')
+        closeOrderDetail()
+        await loadOrders()
+      } else {
+        showToast(result.message || 'Failed to cancel order', 'error')
+      }
+    }
+
+    // init
+    loadOrders()
+  </script>
+</body>
+</html>
