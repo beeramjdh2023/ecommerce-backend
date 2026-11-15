@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — ShopX</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
+
 <body>
   <div class="auth-container">
     <div class="auth-card">
@@ -22,24 +24,13 @@
 
       <div class="form-group">
         <label class="form-label">Email Address</label>
-        <input
-          type="email"
-          id="email"
-          class="form-input"
-          placeholder="beeram@gmail.com"
-          autocomplete="email"
-        />
+        <input type="email" id="email" class="form-input" placeholder="beeram@gmail.com" autocomplete="email" />
       </div>
 
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input
-          type="password"
-          id="password"
-          class="form-input"
-          placeholder="Enter your password"
-          autocomplete="current-password"
-        />
+        <input type="password" id="password" class="form-input" placeholder="Enter your password"
+          autocomplete="current-password" />
       </div>
 
       <button class="btn btn-primary" id="loginBtn">
@@ -91,11 +82,18 @@
       if (result.accessToken) {
         saveToken(result.accessToken)
         saveUser(result.user)
-        window.location.href = '/pages/products.html'
+        const setupSeller = localStorage.getItem('setup_seller')
+        localStorage.removeItem('setup_seller')
+        if (setupSeller) {
+          window.location.href = '/pages/seller-dashboard.html'
+        } else {
+          window.location.href = '/pages/products.html'
+        }
       } else {
         showAlert('alert', result.message || 'Login failed')
       }
     })
   </script>
 </body>
+
 </html>

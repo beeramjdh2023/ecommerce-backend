@@ -3,6 +3,8 @@ import {
   updateSellerProfile, updateSellerStatus, getAllSellers, getSellerDashboard
 } from './seller.repository.js'
 
+import pool from '../../config/db.js'
+
 export const createSellerProfileService = async (user_id, data) => {
 
   // check if seller profile already exists

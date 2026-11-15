@@ -13,7 +13,7 @@ export const createProduct = async ({ seller_id, category_id, name, slug, descri
   return rows[0]
 }
 
-export const getProducts = async ({ category_id, min_price, max_price, search, sort, page, limit }) => {
+export const getProducts = async ({ seller_id,category_id, min_price, max_price, search, sort, page, limit }) => {
 
   const limitInt = parseInt(limit)
   const pageInt = parseInt(page)
@@ -43,6 +43,11 @@ export const getProducts = async ({ category_id, min_price, max_price, search, s
   if (category_id) {
     query += ' AND p.category_id = ?'
     params.push(category_id)
+  }
+
+  if (seller_id) {
+  query += ' AND p.seller_id = ?'
+  params.push(seller_id)
   }
 
   if (minPrice) {
@@ -76,7 +81,7 @@ export const getProducts = async ({ category_id, min_price, max_price, search, s
   return rows
 }
 
-export const getProductsCount = async ({ category_id, min_price, max_price, search }) => {
+export const getProductsCount = async ({seller_id, category_id, min_price, max_price, search }) => {
   const minPrice = min_price ? parseFloat(min_price) : null
   const maxPrice = max_price ? parseFloat(max_price) : null
   const params = []
@@ -86,6 +91,10 @@ export const getProductsCount = async ({ category_id, min_price, max_price, sear
   if (category_id) {
     query += ' AND p.category_id = ?'
     params.push(category_id)
+  }
+  if (seller_id) {
+  query += ' AND p.seller_id = ?'
+  params.push(seller_id)
   }
   if (minPrice) {
     query += ' AND p.price >= ?'

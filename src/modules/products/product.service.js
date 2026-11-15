@@ -4,6 +4,7 @@ import {
   getProductImages, updateProduct, deleteProduct, getSellerProfile
 } from './product.repository.js'
 import { getCategoryById } from '../categories/category.repository.js'
+import { invalidateCachePattern } from '../../utils/cache.utils.js'
 
 export const createProductService = async (user_id, data) => {
   const seller = await getSellerProfile(user_id)
@@ -34,6 +35,7 @@ export const getProductsService = async (query) => {
     max_price: query.max_price || null,
     search: query.search || null,
     sort: query.sort || 'newest',
+    seller_id: query.seller_id || null,
     page,
     limit
   }

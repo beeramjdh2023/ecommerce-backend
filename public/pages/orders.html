@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Orders — ShopX</title>
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/orders.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
+
 <body>
 
   <!-- NAVBAR -->
@@ -66,12 +69,7 @@
            font-size:13px; color:var(--success);">
       </div>
 
-      <button
-        class="btn-place-order"
-        id="placeOrderBtn"
-        onclick="placeOrder()"
-        disabled
-      >
+      <button class="btn-place-order" id="placeOrderBtn" onclick="placeOrder()" disabled>
         Place Order
       </button>
     </div>
@@ -102,8 +100,7 @@
 
   <script type="module">
     import { api } from '../js/api.js'
-    import { requireAuth, removeToken, showToast } from '../js/utils.js'
-
+    import { requireAuth, removeToken, showToast, getUser } from '../js/utils.js'
     requireAuth()
 
     document.getElementById('logoutBtn').addEventListener('click', async (e) => {
@@ -117,11 +114,7 @@
     let selectedAddressId = null
     let appliedCoupon = null
 
-    // check if coming from checkout
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('checkout') === 'true') {
-      openCheckout()
-    }
+
 
     // load applied coupon from localStorage
     const savedCoupon = localStorage.getItem('appliedCoupon')
@@ -158,8 +151,8 @@
               <p class="order-id">Order #${order.id.slice(0, 8).toUpperCase()}</p>
               <p class="order-date">
                 ${new Date(order.created_at).toLocaleDateString('en-IN', {
-                  day: 'numeric', month: 'short', year: 'numeric'
-                })}
+        day: 'numeric', month: 'short', year: 'numeric'
+      })}
               </p>
             </div>
             <span class="order-status-badge status-${order.status}">
@@ -362,7 +355,7 @@
       }
 
       if (!data.full_name || !data.phone || !data.street || !data.city ||
-          !data.state || !data.pincode) {
+        !data.state || !data.pincode) {
         showToast('Please fill all address fields', 'error')
         return
       }
@@ -380,14 +373,195 @@
 
     // place order
     window.placeOrder = async () => {
-      if (!selectedAddressId) {
-        showToast('Please select a delivery address', 'error')
+  if (!selectedAddressId) {
+    showToast('Please select a delivery address', 'error')
+    return
+  }
+
+  const btn = document.getElementById('placeOrderBtn')
+  btn.disabled = true
+  btn.textContent = 'Processing...'
+
+  // step 1 — place order in our DB first
+  const orderData = { address_id: selectedAddressId }
+  if (appliedCoupon) {
+    orderData.coupon_code = appliedCoupon.code
+  }
+
+  const orderResult = await api.orders.place(orderData)
+
+  if (!orderResult.order) {
+    showToast(orderResult.message || 'Failed to place order', 'error')
+    btn.disabled = false
+    btn.textContent = 'Place Order'
+    return
+  }
+
+  const order = orderResult.order
+
+  // step 2 — create Razorpay payment order
+  const paymentResult = await fetch(
+    'http://localhost:4000/api/v1/payments/create-order',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+      },
+      body: JSON.stringify({ order_id: order.id })
+    }
+  ).then(r => r.json())
+
+  if (!paymentResult.razorpay_order_id) {
+    showToast(paymentResult.message || 'Failed to create payment', 'error')
+    btn.disabled = false
+    btn.textContent = 'Place Order'
+    return
+  }
+
+  btn.disabled = false
+  btn.textContent = 'Place Order'
+
+  // step 3 — open Razorpay checkout popup
+  const options = {
+    key: paymentResult.key_id,
+    amount: paymentResult.amount * 100,
+    currency: 'INR',
+    name: 'ShopX',
+    description: `Order #${order.id.slice(0, 8).toUpperCase()}`,
+    order_id: paymentResult.razorpay_order_id,
+    prefill: {
+      name: getUser()?.name || '',
+      email: getUser()?.email || ''
+    },
+    theme: {
+      color: '#6c63ff'
+    },
+    handler: async (response) => {
+      // step 4 — payment successful — verify with our backend
+      await verifyRazorpayPayment(response, order.id)
+    },
+    modal: {
+      ondismiss: () => {
+        showToast('Payment cancelled', 'error')
+      }
+    }
+  }
+
+  const razorpayInstance = new Razorpay(options)
+  razorpayInstance.open()
+
+  // handle payment failure
+  razorpayInstance.on('payment.failed', (response) => {
+    showToast(`Payment failed: ${response.error.description}`, 'error')
+  })
+}
+
+// verify payment after Razorpay success
+const verifyRazorpayPayment = async (response, orderId) => {
+  const result = await fetch(
+    'http://localhost:4000/api/v1/payments/verify',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+      },
+      body: JSON.stringify({
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+        order_id: orderId
+      })
+    }
+  ).then(r => r.json())
+
+  if (result.message === 'Payment verified successfully') {
+    localStorage.removeItem('appliedCoupon')
+    appliedCoupon = null
+
+    // show success
+    showToast('Payment successful! Order placed 🎉')
+    closeCheckout()
+    await loadOrders()
+  } else {
+    showToast(result.message || 'Payment verification failed', 'error')
+  }
+}
+
+    // payment modal
+    window.showPaymentModal = () => {
+      // create modal dynamically
+      const modal = document.createElement('div')
+      modal.className = 'modal-overlay'
+      modal.id = 'paymentModal'
+      modal.innerHTML = `
+    <div class="modal" style="max-width:420px;">
+      <div class="modal-title">
+        Select Payment Method
+        <button class="modal-close" onclick="document.getElementById('paymentModal').remove()">✕</button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;">
+
+        <label style="display:flex; align-items:center; gap:12px; padding:14px;
+                      background:var(--bg-secondary); border:2px solid var(--border);
+                      border-radius:var(--radius-sm); cursor:pointer; transition:all 0.2s;"
+               onclick="selectPayment(this, 'COD')">
+          <input type="radio" name="payment" value="COD"
+                 style="accent-color:var(--accent);" />
+          <div>
+            <p style="font-weight:600; font-size:14px;">Cash on Delivery</p>
+            <p style="font-size:12px; color:var(--text-muted);">Pay when you receive</p>
+          </div>
+        </label>
+
+        <label style="display:flex; align-items:center; gap:12px; padding:14px;
+                      background:var(--bg-secondary); border:2px solid var(--border);
+                      border-radius:var(--radius-sm); cursor:pointer; transition:all 0.2s;"
+               onclick="selectPayment(this, 'ONLINE')">
+          <input type="radio" name="payment" value="ONLINE"
+                 style="accent-color:var(--accent);" />
+          <div>
+            <p style="font-weight:600; font-size:14px;">Online Payment</p>
+            <p style="font-size:12px; color:var(--text-muted);">UPI / Card / Net Banking</p>
+          </div>
+        </label>
+
+      </div>
+
+      <button onclick="confirmPaymentAndOrder()"
+        style="width:100%; padding:14px; background:var(--accent); color:white;
+               border:none; border-radius:var(--radius-sm); font-size:15px;
+               font-weight:600; cursor:pointer;">
+        Confirm Order
+      </button>
+    </div>
+  `
+      document.body.appendChild(modal)
+    }
+
+    window.selectPayment = (label, method) => {
+      document.querySelectorAll('[onclick^="selectPayment"]').forEach(el => {
+        el.style.borderColor = 'var(--border)'
+      })
+      label.style.borderColor = 'var(--accent)'
+      window.selectedPaymentMethod = method
+    }
+
+    window.confirmPaymentAndOrder = async () => {
+      if (!window.selectedPaymentMethod) {
+        showToast('Please select a payment method', 'error')
         return
       }
 
+      document.getElementById('paymentModal')?.remove()
+
       const btn = document.getElementById('placeOrderBtn')
-      btn.disabled = true
-      btn.textContent = 'Placing Order...'
+      if (btn) {
+        btn.disabled = true
+        btn.textContent = 'Placing Order...'
+      }
 
       const orderData = { address_id: selectedAddressId }
       if (appliedCoupon) {
@@ -396,15 +570,28 @@
 
       const result = await api.orders.place(orderData)
 
-      btn.disabled = false
-      btn.textContent = 'Place Order'
+      if (btn) {
+        btn.disabled = false
+        btn.textContent = 'Place Order'
+      }
 
       if (result.order) {
         localStorage.removeItem('appliedCoupon')
         appliedCoupon = null
-        showToast('Order placed successfully! 🎉')
-        closeCheckout()
-        await loadOrders()
+
+        // if online payment — mark as paid (mock)
+        if (window.selectedPaymentMethod === 'ONLINE') {
+          showToast('Order placed! Redirecting to payment...')
+          setTimeout(() => {
+            showToast('Payment successful! 🎉')
+            closeCheckout()
+            loadOrders()
+          }, 2000)
+        } else {
+          showToast('Order placed successfully! 🎉')
+          closeCheckout()
+          loadOrders()
+        }
       } else {
         showToast(result.message || 'Failed to place order', 'error')
       }
@@ -423,8 +610,15 @@
       }
     }
 
+    // check if coming from checkout
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('checkout') === 'true') {
+      openCheckout()
+    }
+
     // init
     loadOrders()
   </script>
 </body>
+
 </html>

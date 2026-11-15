@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Verify OTP — ShopX</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
+
 <body>
   <div class="auth-container">
     <div class="auth-card">
@@ -123,8 +125,14 @@
 
       if (result.user) {
         localStorage.removeItem('pending_email')
+        const becomeSeller = localStorage.getItem('become_seller')
+        localStorage.removeItem('become_seller')
         showAlert('alert', 'Email verified! Redirecting...', 'success')
         setTimeout(() => {
+          if (becomeSeller) {
+            // redirect to login with seller flag
+            localStorage.setItem('setup_seller', 'true')
+          }
           window.location.href = '/pages/login.html'
         }, 1500)
       } else {
@@ -139,43 +147,44 @@
     })
 
     // resend OTP
-   document.getElementById('resendBtn').addEventListener('click', async (e) => {
-  e.preventDefault()
+    document.getElementById('resendBtn').addEventListener('click', async (e) => {
+      e.preventDefault()
 
-  const btn = e.target
-  btn.style.pointerEvents = 'none'
-  btn.textContent = 'Sending...'
+      const btn = e.target
+      btn.style.pointerEvents = 'none'
+      btn.textContent = 'Sending...'
 
-  const result = await api.auth.resendOTP({ email })
- 
-  if (result.message?.includes('OTP')) {
-    showAlert('alert', 'New OTP sent to your email', 'success')
+      const result = await api.auth.resendOTP({ email })
 
-    // clear all boxes
-    inputs.forEach(i => {
-      i.value = ''
-      i.classList.remove('filled')
-    })
-    inputs[0].focus()
+      if (result.message?.includes('OTP')) {
+        showAlert('alert', 'New OTP sent to your email', 'success')
 
-    // disable resend for 30 seconds
-    let seconds = 30
-    const interval = setInterval(() => {
-      btn.textContent = `Resend in ${seconds}s`
-      seconds--
-      if (seconds < 0) {
-        clearInterval(interval)
+        // clear all boxes
+        inputs.forEach(i => {
+          i.value = ''
+          i.classList.remove('filled')
+        })
+        inputs[0].focus()
+
+        // disable resend for 30 seconds
+        let seconds = 30
+        const interval = setInterval(() => {
+          btn.textContent = `Resend in ${seconds}s`
+          seconds--
+          if (seconds < 0) {
+            clearInterval(interval)
+            btn.textContent = 'Resend OTP'
+            btn.style.pointerEvents = 'auto'
+          }
+        }, 1000)
+
+      } else {
+        showAlert('alert', result.message || 'Failed to resend OTP')
         btn.textContent = 'Resend OTP'
         btn.style.pointerEvents = 'auto'
       }
-    }, 1000)
-
-  } else {
-    showAlert('alert', result.message || 'Failed to resend OTP')
-    btn.textContent = 'Resend OTP'
-    btn.style.pointerEvents = 'auto'
-  }
-})
+    })
   </script>
 </body>
+
 </html>

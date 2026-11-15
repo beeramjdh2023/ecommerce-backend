@@ -14,9 +14,15 @@ import wishlistRoutes from './modules/wishlist/wishlist.routes.js'
 import { rateLimiter } from './middlewares/rateLimiter.middleware.js'
 import sellerRoutes from './modules/seller/seller.routes.js'
 import couponRoutes from './modules/coupons/coupon.routes.js'
+import adminRoutes from './modules/admin/admin.routes.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
+// Card Number: 5267 3181 8797 5449
+// Expiry:      08/28
+// CVV:         123
+// Name:        Test Account
+// OTP:         1234
 
 dotenv.config();
 
@@ -52,7 +58,7 @@ app.use('/api/v1/reviews', reviewRoutes)
 app.use('/api/v1/wishlist', wishlistRoutes)
 app.use('/api/v1/sellers', sellerRoutes)
 app.use('/api/v1/coupons', couponRoutes)
-
+app.use('/api/v1/admin', adminRoutes)
 app.get("/",(req,res)=>{
     res.status(200).json({message:"ecommerce api is running "});
 })

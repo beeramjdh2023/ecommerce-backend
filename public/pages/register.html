@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register — ShopX</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
+
 <body>
   <div class="auth-container">
     <div class="auth-card">
@@ -22,32 +24,25 @@
 
       <div class="form-group">
         <label class="form-label">Full Name</label>
-        <input
-          type="text"
-          id="name"
-          class="form-input"
-          placeholder="Beeram Chand"
-        />
+        <input type="text" id="name" class="form-input" placeholder="Beeram Chand" />
       </div>
 
       <div class="form-group">
         <label class="form-label">Email Address</label>
-        <input
-          type="email"
-          id="email"
-          class="form-input"
-          placeholder="beeram@gmail.com"
-        />
+        <input type="email" id="email" class="form-input" placeholder="beeram@gmail.com" />
       </div>
 
       <div class="form-group">
         <label class="form-label">Password</label>
-        <input
-          type="password"
-          id="password"
-          class="form-input"
-          placeholder="Minimum 6 characters"
-        />
+        <input type="password" id="password" class="form-input" placeholder="Minimum 6 characters" />
+      </div>
+
+      <div class="form-group" style="display:flex; align-items:center; gap:10px;">
+        <input type="checkbox" id="becomeSeller"
+          style="width:16px; height:16px; accent-color:var(--accent); cursor:pointer;" />
+        <label for="becomeSeller" style="font-size:14px; color:var(--text-secondary); cursor:pointer;">
+          I want to become a seller
+        </label>
       </div>
 
       <button class="btn btn-primary" id="registerBtn">
@@ -76,6 +71,7 @@
       const name = document.getElementById('name').value.trim()
       const email = document.getElementById('email').value.trim()
       const password = document.getElementById('password').value.trim()
+      const becomeSeller = document.getElementById('becomeSeller').checked
 
       if (!name || !email || !password) {
         showAlert('alert', 'All fields are required')
@@ -94,8 +90,11 @@
       setLoading(registerBtn, false)
 
       if (result.message === 'OTP sent to your email') {
-        // save email for OTP page
         localStorage.setItem('pending_email', email)
+        // save seller intent for after verification
+        if (becomeSeller) {
+          localStorage.setItem('become_seller', 'true')
+        }
         window.location.href = '/pages/verify-otp.html'
       } else {
         showAlert('alert', result.message || 'Registration failed')
@@ -103,4 +102,5 @@
     })
   </script>
 </body>
+
 </html>

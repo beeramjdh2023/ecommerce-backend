@@ -79,7 +79,8 @@ export const api = {
     place: (data) => request('/orders', { method: 'POST', body: JSON.stringify(data) }),
     getAll: () => request('/orders'),
     getOne: (id) => request(`/orders/${id}`),
-    updateStatus: (id, data) => request(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) })
+    updateStatus: (id, data) => request(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(data) }),
+    getSellerOrders: () => request('/orders/seller/my-orders')
   },
 
   addresses: {

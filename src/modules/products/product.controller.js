@@ -2,6 +2,7 @@ import {
   createProductService, getProductsService, getProductService,
   updateProductService, deleteProductService
 } from './product.service.js'
+import { addProductImage } from './product.repository.js'
 
 export const createProductController = async (req, res) => {
   try {
@@ -45,5 +46,42 @@ export const deleteProductController = async (req, res) => {
     res.status(200).json(result)
   } catch (err) {
     res.status(400).json({ message: err.message })
+  }
+}
+
+export const uploadProductImageController = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image uploaded' })
+    }
+
+    const { id } = req.params
+    const image_url = req.file.path
+
+    await addProductImage({
+      product_id: id,
+      image_url,
+      is_primary: true,
+      display_order: 0
+    })
+
+    res.status(201).json({
+      message: 'Image uploaded successfully',
+      image_url
+    })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+}
+
+export const getProductsBySellerController = async (req, res) => {
+  try {
+    const result = await getProductsService({
+      ...req.query,
+      seller_id: req.params.sellerId
+    })
+    res.status(200).json(result)
+  } catch (err) {
+    res.status(500).json({ message: err.message })
   }
 }

@@ -2,6 +2,27 @@ import {
   placeOrderService, getOrderService,
   getUserOrdersService, updateOrderStatusService
 } from './order.service.js'
+import { getSellerOrdersService,getAllOrdersAdminService } from './order.service.js'
+
+
+export const getSellerOrdersController = async (req, res) => {
+  try {
+    const orders = await getSellerOrdersService(req.user.id)
+    res.status(200).json({ orders })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+}
+
+
+export const getAllOrdersAdminController = async (req, res) => {
+  try {
+    const orders = await getAllOrdersAdminService()
+    res.status(200).json({ orders })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+}
 
 export const placeOrderController = async (req, res) => {
   try {
@@ -15,6 +36,8 @@ export const placeOrderController = async (req, res) => {
     res.status(400).json({ message: err.message })
   }
 }
+
+
 
 export const getOrderController = async (req, res) => {
   try {

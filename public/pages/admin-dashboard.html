@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — ShopX</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <a href="/pages/products.html" class="navbar-brand">ShopX</a>
+    <div class="navbar-links">
+      <a href="/pages/products.html" class="navbar-link">Products</a>
+      <a href="/pages/orders.html" class="navbar-link">Orders</a>
+      <a href="/pages/admin-dashboard.html" class="navbar-link active">Admin</a>
+      <a href="#" class="navbar-link" id="logoutBtn">Logout</a>
+    </div>
+  </nav>
+
+  <!-- COUPON MODAL -->
+  <div class="modal-overlay" id="couponModal" style="display:none">
+    <div class="modal">
+      <div class="modal-title">
+        Create Coupon
+        <button class="modal-close" onclick="closeCouponModal()">✕</button>
+      </div>
+      <div class="modal-form">
+        <div>
+          <label class="modal-label">Coupon Code</label>
+          <input class="modal-input" id="couponCode" placeholder="SAVE10" style="text-transform:uppercase" />
+        </div>
+        <div>
+          <label class="modal-label">Discount Type</label>
+          <select class="modal-select" id="couponType">
+            <option value="PERCENTAGE">Percentage (%)</option>
+            <option value="FLAT">Flat Amount (₹)</option>
+          </select>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label class="modal-label">Discount Value</label>
+            <input class="modal-input" id="couponValue" type="number" placeholder="10" />
+          </div>
+          <div>
+            <label class="modal-label">Max Discount (₹)</label>
+            <input class="modal-input" id="couponMaxDiscount" type="number" placeholder="500 (optional)" />
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div>
+            <label class="modal-label">Min Order Amount (₹)</label>
+            <input class="modal-input" id="couponMinOrder" type="number" placeholder="500" />
+          </div>
+          <div>
+            <label class="modal-label">Usage Limit</label>
+            <input class="modal-input" id="couponLimit" type="number" placeholder="100 (optional)" />
+          </div>
+        </div>
+        <div>
+          <label class="modal-label">Expires At (optional)</label>
+          <input class="modal-input" id="couponExpiry" type="date" />
+        </div>
+        <button class="btn-modal-submit" onclick="createCoupon()">
+          Create Coupon
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="admin-container">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Admin Dashboard</h1>
+        <p class="page-subtitle">Platform overview and management</p>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="admin-tabs">
+      <button class="admin-tab-btn active" onclick="switchTab('overview', this)">
+        Overview
+      </button>
+      <button class="admin-tab-btn" onclick="switchTab('orders', this)">
+        Orders
+      </button>
+      <button class="admin-tab-btn" onclick="switchTab('users', this)">
+        Users
+      </button>
+      <button class="admin-tab-btn" onclick="switchTab('sellers', this)">
+        Sellers
+      </button>
+      <button class="admin-tab-btn" onclick="switchTab('coupons', this)">
+        Coupons
+      </button>
+      <button class="admin-tab-btn" onclick="switchTab('reports', this)">
+        Reports
+      </button>
+    </div>
+
+    <!-- OVERVIEW TAB -->
+    <div class="admin-tab-content active" id="tab-overview">
+      <div id="overviewContent">
+        <p style="color:var(--text-secondary)">Loading stats...</p>
+      </div>
+    </div>
+
+    <!-- ORDERS TAB -->
+    <div class="admin-tab-content" id="tab-orders">
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">All Orders</h3>
+        </div>
+        <div id="adminOrdersContent">
+          <p style="color:var(--text-secondary)">Loading orders...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS TAB -->
+    <div class="admin-tab-content" id="tab-users">
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">All Users</h3>
+        </div>
+        <div id="usersContent">
+          <p style="color:var(--text-secondary)">Loading users...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SELLERS TAB -->
+    <div class="admin-tab-content" id="tab-sellers">
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">All Sellers</h3>
+        </div>
+        <div id="sellersContent">
+          <p style="color:var(--text-secondary)">Loading sellers...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- COUPONS TAB -->
+    <div class="admin-tab-content" id="tab-coupons">
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">Coupons</h3>
+          <button class="btn-create-coupon" onclick="openCouponModal()">
+            + Create Coupon
+          </button>
+        </div>
+        <div id="couponsContent">
+          <p style="color:var(--text-secondary)">Loading coupons...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- REPORTS TAB -->
+    <div class="admin-tab-content" id="tab-reports">
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">Sales Report</h3>
+        </div>
+        <div class="report-filters">
+          <div class="filter-group">
+            <label class="filter-label">From Date</label>
+            <input type="date" class="filter-input" id="fromDate" />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">To Date</label>
+            <input type="date" class="filter-input" id="toDate" />
+          </div>
+          <button class="btn-run-report" onclick="loadSalesReport()">
+            Run Report
+          </button>
+        </div>
+        <div id="reportContent" style="margin-top:24px;"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h3 class="section-title">Top 10 Products</h3>
+        </div>
+        <div id="topProductsContent">
+          <p style="color:var(--text-secondary)">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast-container"></div>
+
+  <script type="module">
+    import { api } from '../js/api.js'
+    import { requireAuth, getUser, removeToken, showToast } from '../js/utils.js'
+
+    requireAuth()
+
+    // check if admin
+    const user = getUser()
+    if (user && user.role !== 'ADMIN') {
+      window.location.href = '/pages/products.html'
+    }
+
+    document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+      e.preventDefault()
+      await api.auth.logout()
+      removeToken()
+      window.location.href = '/pages/login.html'
+    })
+
+    // switch tabs
+    window.switchTab = (tab, btn) => {
+      document.querySelectorAll('.admin-tab-btn')
+        .forEach(b => b.classList.remove('active'))
+      document.querySelectorAll('.admin-tab-content')
+        .forEach(c => c.classList.remove('active'))
+
+      btn.classList.add('active')
+      document.getElementById(`tab-${tab}`).classList.add('active')
+
+      // load tab data
+      if (tab === 'users') loadUsers()
+      if (tab === 'sellers') loadSellers()
+      if (tab === 'coupons') loadCoupons()
+      if (tab === 'reports') loadTopProducts()
+      if (tab === 'orders') loadAdminOrders()
+    }
+
+    // load overview stats
+    const loadOverview = async () => {
+      const result = await api.admin.getStats()
+      if (!result.stats) return
+
+      const { users, orders, products, sellers } = result.stats
+
+      document.getElementById('overviewContent').innerHTML = `
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value">${users.total_users || 0}</div>
+            <div class="stat-label">Total Users</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🛍️</div>
+            <div class="stat-value">${orders.total_orders || 0}</div>
+            <div class="stat-label">Total Orders</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-value">
+              ₹${Number(orders.total_revenue || 0).toLocaleString('en-IN')}
+            </div>
+            <div class="stat-label">Total Revenue</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-value">${products.total_products || 0}</div>
+            <div class="stat-label">Total Products</div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">🏪</div>
+            <div class="stat-value">${sellers.approved_sellers || 0}</div>
+            <div class="stat-label">Active Sellers</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-value"
+              style="color:${sellers.pending_approval > 0 ? 'var(--warning)' : 'inherit'}">
+              ${sellers.pending_approval || 0}
+            </div>
+            <div class="stat-label">Pending Approval</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🚫</div>
+            <div class="stat-value"
+              style="color:${products.out_of_stock > 0 ? 'var(--error)' : 'inherit'}">
+              ${products.out_of_stock || 0}
+            </div>
+            <div class="stat-label">Out of Stock</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-value"
+              style="color:${orders.cancelled_orders > 0 ? 'var(--error)' : 'inherit'}">
+              ${orders.cancelled_orders || 0}
+            </div>
+            <div class="stat-label">Cancelled Orders</div>
+          </div>
+        </div>
+      `
+    }
+
+    // load all orders for admin
+    const loadAdminOrders = async () => {
+      // admin uses same orders endpoint but sees all orders
+      const result = await fetch(
+        'http://localhost:4000/api/v1/orders/all',
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      ).then(r => r.json())
+
+      if (!result.orders) return
+
+      document.getElementById('adminOrdersContent').innerHTML = result.orders.length ? `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Order ID</th>
+          <th>Customer</th>
+          <th>Amount</th>
+          <th>Payment</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th>Update Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${result.orders.map(order => `
+          <tr>
+            <td style="color:var(--text-primary); font-weight:600;
+                       font-family:monospace;">
+              #${order.id.slice(0, 8).toUpperCase()}
+            </td>
+            <td>${order.customer_name || '—'}</td>
+            <td>₹${Number(order.final_amount).toLocaleString('en-IN')}</td>
+            <td>
+              <span style="color:${order.payment_status === 'PAID'
+          ? 'var(--success)' : 'var(--warning)'}">
+                ${order.payment_status}
+              </span>
+            </td>
+            <td>
+              <span class="status-badge status-${order.status}"
+                style="padding:3px 10px; border-radius:20px; font-size:11px;
+                       font-weight:600;">
+                ${order.status.replace('_', ' ')}
+              </span>
+            </td>
+            <td>${new Date(order.created_at).toLocaleDateString('en-IN')}</td>
+            <td>
+              <select
+                onchange="adminUpdateOrderStatus('${order.id}', this.value)"
+                style="padding:6px 10px; background:var(--bg-secondary);
+                       border:1px solid var(--border); border-radius:4px;
+                       color:var(--text-primary); font-size:13px; cursor:pointer;">
+                <option value="">Change Status</option>
+                <option value="CONFIRMED">Confirm</option>
+                <option value="PROCESSING">Processing</option>
+                <option value="SHIPPED">Shipped</option>
+                <option value="DELIVERED">Delivered</option>
+                <option value="CANCELLED">Cancel</option>
+                <option value="RETURNED">Returned</option>
+              </select>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  ` : '<p style="color:var(--text-muted); font-size:14px;">No orders yet.</p>'
+    }
+
+    // admin update order status
+    window.adminUpdateOrderStatus = async (orderId, status) => {
+      if (!status) return
+
+      const result = await api.orders.updateStatus(orderId, { status })
+
+      if (result.message.includes("Cannot")) {
+        showToast(`${result.message}`,'error');
+        loadAdminOrders()
+      }else if(result.message){
+        showToast(`${result.message}`)
+        loadAdminOrders()
+      } else {
+        showToast(result.message || 'Failed to update order', 'error')
+      }
+    }
+
+    // load users
+    const loadUsers = async () => {
+      const result = await api.admin.getUsers()
+      if (!result.users) return
+
+      document.getElementById('usersContent').innerHTML = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${result.users.map(user => `
+              <tr>
+                <td style="color:var(--text-primary); font-weight:500;">
+                  ${user.name}
+                </td>
+                <td>${user.email}</td>
+                <td>
+                  <span class="status-badge badge-${user.role.toLowerCase()}">
+                    ${user.role}
+                  </span>
+                </td>
+                <td>
+                  <span class="status-badge ${user.is_active ? 'badge-active' : 'badge-inactive'}">
+                    ${user.is_active ? 'Active' : 'Suspended'}
+                  </span>
+                </td>
+                <td>${new Date(user.created_at).toLocaleDateString('en-IN')}</td>
+                <td>
+                  ${user.role !== 'ADMIN' ? `
+                    <button
+                      class="action-btn ${user.is_active ? 'action-btn-deactivate' : 'action-btn-activate'}"
+                      onclick="toggleUserStatus('${user.id}', ${!user.is_active})">
+                      ${user.is_active ? 'Suspend' : 'Activate'}
+                    </button>
+                  ` : '<span style="color:var(--text-muted);font-size:12px;">—</span>'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `
+    }
+
+    // load sellers
+    const loadSellers = async () => {
+      const result = await api.admin.getUsers()
+      if (!result.users) return
+
+      // fetch sellers from seller endpoint
+      const sellersResult = await fetch(
+        'http://localhost:4000/api/v1/sellers',
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      ).then(r => r.json())
+
+      if (!sellersResult.sellers) return
+
+      document.getElementById('sellersContent').innerHTML = `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Shop Name</th>
+              <th>Owner</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Sales</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sellersResult.sellers.map(seller => `
+              <tr>
+                <td style="color:var(--text-primary); font-weight:500;">
+                  ${seller.shop_name}
+                </td>
+                <td>${seller.owner_name}</td>
+                <td>${seller.owner_email}</td>
+                <td>
+                  <span class="status-badge badge-${seller.status.toLowerCase()}">
+                    ${seller.status}
+                  </span>
+                </td>
+                <td>${seller.total_sales || 0}</td>
+                <td>
+                  ${seller.status !== 'APPROVED' ? `
+                    <button class="action-btn action-btn-approve"
+                      onclick="updateSellerStatus('${seller.id}', 'APPROVED')">
+                      Approve
+                    </button>
+                  ` : ''}
+                  ${seller.status !== 'SUSPENDED' ? `
+                    <button class="action-btn action-btn-suspend"
+                      onclick="updateSellerStatus('${seller.id}', 'SUSPENDED')">
+                      Suspend
+                    </button>
+                  ` : `
+                    <button class="action-btn action-btn-approve"
+                      onclick="updateSellerStatus('${seller.id}', 'APPROVED')">
+                      Unsuspend
+                    </button>
+                  `}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `
+    }
+
+    // load coupons
+    const loadCoupons = async () => {
+      const result = await fetch(
+        'http://localhost:4000/api/v1/coupons',
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      ).then(r => r.json())
+
+      if (!result.coupons) return
+
+      document.getElementById('couponsContent').innerHTML = result.coupons.length ? `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Type</th>
+              <th>Value</th>
+              <th>Min Order</th>
+              <th>Used</th>
+              <th>Expires</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${result.coupons.map(c => `
+              <tr>
+                <td style="color:var(--text-primary); font-weight:600;
+                           font-family:monospace;">${c.code}</td>
+                <td>${c.type}</td>
+                <td>${c.type === 'PERCENTAGE'
+          ? `${c.value}%`
+          : `₹${c.value}`}
+                  ${c.max_discount ? `<br><span style="font-size:11px;color:var(--text-muted)">
+                    max ₹${c.max_discount}</span>` : ''}
+                </td>
+                <td>₹${c.min_order_amount || 0}</td>
+                <td>${c.used_count}${c.usage_limit ? `/${c.usage_limit}` : ''}</td>
+                <td>${c.expires_at
+          ? new Date(c.expires_at).toLocaleDateString('en-IN')
+          : 'No expiry'}
+                </td>
+                <td>
+                  <span class="status-badge ${c.is_active ? 'badge-active' : 'badge-inactive'}">
+                    ${c.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td>
+                  ${c.is_active ? `
+                    <button class="action-btn action-btn-suspend"
+                      onclick="deactivateCoupon('${c.id}')">
+                      Deactivate
+                    </button>
+                  ` : '—'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<p style="color:var(--text-muted); font-size:14px;">No coupons created yet.</p>'
+    }
+
+    // load sales report
+    window.loadSalesReport = async () => {
+      const fromDate = document.getElementById('fromDate').value
+      const toDate = document.getElementById('toDate').value
+
+      if (!fromDate || !toDate) {
+        showToast('Please select both dates', 'error')
+        return
+      }
+
+      const result = await api.admin.getSalesReport(
+        `?from_date=${fromDate}&to_date=${toDate}`
+      )
+
+      if (!result.report) {
+        showToast('Failed to load report', 'error')
+        return
+      }
+
+      const { summary, daily_breakdown } = result.report
+
+      document.getElementById('reportContent').innerHTML = `
+
+        <div class="report-summary">
+          <div class="report-card">
+            <div class="report-card-value">${summary.total_orders || 0}</div>
+            <div class="report-card-label">Total Orders</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-value">
+              ₹${Number(summary.total_revenue || 0).toLocaleString('en-IN')}
+            </div>
+            <div class="report-card-label">Total Revenue</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-value">${summary.unique_customers || 0}</div>
+            <div class="report-card-label">Unique Customers</div>
+          </div>
+          <div class="report-card">
+            <div class="report-card-value">
+              ₹${Number(summary.average_order_value || 0).toLocaleString('en-IN')}
+            </div>
+            <div class="report-card-label">Avg Order Value</div>
+          </div>
+        </div>
+
+        ${daily_breakdown?.length ? `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Orders</th>
+                <th>Revenue</th>
+                <th>Customers</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${daily_breakdown.map(day => `
+                <tr>
+                  <td style="color:var(--text-primary)">
+                    ${new Date(day.date).toLocaleDateString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric'
+      })}
+                  </td>
+                  <td>${day.total_orders}</td>
+                  <td>₹${Number(day.revenue).toLocaleString('en-IN')}</td>
+                  <td>${day.unique_customers}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : '<p style="color:var(--text-muted);font-size:14px;margin-top:16px;">No orders in this date range.</p>'}
+      `
+    }
+
+    // load top products
+    const loadTopProducts = async () => {
+      const result = await api.admin.getTopProducts()
+      if (!result.products) return
+
+      document.getElementById('topProductsContent').innerHTML = result.products.length ? `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Seller</th>
+              <th>Units Sold</th>
+              <th>Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${result.products.map((p, i) => `
+              <tr>
+                <td style="color:var(--text-primary); font-weight:500;">
+                  ${i === 0 ? '🥇 ' : i === 1 ? '🥈 ' : i === 2 ? '🥉 ' : ''}
+                  ${p.name}
+                </td>
+                <td>${p.category}</td>
+                <td>${p.seller}</td>
+                <td>${p.total_sold}</td>
+                <td>₹${Number(p.total_revenue).toLocaleString('en-IN')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<p style="color:var(--text-muted); font-size:14px;">No sales data yet.</p>'
+    }
+
+    // toggle user status
+    window.toggleUserStatus = async (userId, isActive) => {
+      const result = await api.admin.updateUserStatus(userId, { is_active: isActive })
+
+      if (result.user) {
+        showToast(`User ${isActive ? 'activated' : 'suspended'} successfully`)
+        loadUsers()
+      } else {
+        showToast(result.message || 'Failed to update user', 'error')
+      }
+    }
+
+    // update seller status
+    window.updateSellerStatus = async (sellerId, status) => {
+      const result = await fetch(
+        `http://localhost:4000/api/v1/sellers/${sellerId}/status`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify({ status })
+        }
+      ).then(r => r.json())
+
+      if (result.seller) {
+        showToast(`Seller ${status.toLowerCase()} successfully`)
+        loadSellers()
+      } else {
+        showToast(result.message || 'Failed to update seller', 'error')
+      }
+    }
+
+    // open coupon modal
+    window.openCouponModal = () => {
+      document.getElementById('couponModal').style.display = 'flex'
+    }
+
+    // close coupon modal
+    window.closeCouponModal = () => {
+      document.getElementById('couponModal').style.display = 'none'
+    }
+
+    // create coupon
+    window.createCoupon = async () => {
+      const data = {
+        code: document.getElementById('couponCode').value.trim(),
+        type: document.getElementById('couponType').value,
+        value: document.getElementById('couponValue').value,
+        max_discount: document.getElementById('couponMaxDiscount').value || null,
+        min_order_amount: document.getElementById('couponMinOrder').value || 0,
+        usage_limit: document.getElementById('couponLimit').value || null,
+        expires_at: document.getElementById('couponExpiry').value || null
+      }
+
+      if (!data.code || !data.value) {
+        showToast('Code and value are required', 'error')
+        return
+      }
+
+      const result = await fetch(
+        'http://localhost:4000/api/v1/coupons',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          },
+          body: JSON.stringify(data)
+        }
+      ).then(r => r.json())
+
+      if (result.coupon) {
+        showToast('Coupon created successfully!')
+        closeCouponModal()
+        loadCoupons()
+      } else {
+        showToast(result.message || 'Failed to create coupon', 'error')
+      }
+    }
+
+    // deactivate coupon
+    window.deactivateCoupon = async (couponId) => {
+      const result = await fetch(
+        `http://localhost:4000/api/v1/coupons/${couponId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        }
+      ).then(r => r.json())
+
+      if (result.message) {
+        showToast('Coupon deactivated')
+        loadCoupons()
+      } else {
+        showToast('Failed to deactivate coupon', 'error')
+      }
+    }
+
+    // set default dates for report
+    const today = new Date().toISOString().split('T')[0]
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      .toISOString().split('T')[0]
+    document.getElementById('fromDate').value = monthAgo
+    document.getElementById('toDate').value = today
+
+    // init
+    loadOverview()
+  </script>
+</body>
+
+</html>

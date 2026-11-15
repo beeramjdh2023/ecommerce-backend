@@ -4,6 +4,9 @@ import { getAddressById } from '../addresses/address.repository.js'
 import { addOrderConfirmationJob } from '../../queues/order.producer.js'
 import { findUserById } from '../auth/auth.repository.js'
 import { validateCouponService, recordCouponUsageService } from '../coupons/coupon.service.js'
+import { getSellerOrders,getAllOrdersAdmin } from './order.repository.js'
+import { getSellerProfile } from '../products/product.repository.js'
+import pool from '../../config/db.js'
 
 // valid status transitions — state machine
 const STATUS_TRANSITIONS = {
@@ -127,6 +130,25 @@ export const updateOrderStatusService = async (order_id, new_status, user_id, ro
     if (role === 'CUSTOMER') {
       throw new Error('Not authorized to perform this action')
     }
+
+    // if seller — check they own at least one product in this order
+    if (role === 'SELLER') {
+      const seller = await getSellerProfile(user_id)
+      if (!seller) {
+        throw new Error('Seller profile not found')
+      }
+
+      // check if this seller has any items in this order
+      const [sellerItems] = await pool.execute(
+        `SELECT id FROM order_items 
+         WHERE order_id = ? AND seller_id = ?`,
+        [order_id, seller.id]
+      )
+
+      if (sellerItems.length === 0) {
+        throw new Error('You are not authorized to update this order — none of your products are in it')
+      }
+    }
   }
 
   await updateOrderStatus(order_id, new_status, `Status changed to ${new_status}`)
@@ -136,10 +158,23 @@ export const updateOrderStatusService = async (order_id, new_status, user_id, ro
   const updatedOrder = await getOrderById(order_id)
 
   // fire and forget
-  addOrderStatusUpdateJob(
+  addOrderConfirmationJob(
     { ...updatedOrder, user_name: user.name },
     user.email
   ).catch(err => console.error('Failed to add status update job:', err.message))
 
   return { message: `Order status updated to ${new_status}` }
+}
+
+
+export const getSellerOrdersService = async (user_id) => {
+  const seller = await getSellerProfile(user_id)
+  if (!seller) {
+    throw new Error('Seller profile not found')
+  }
+  return await getSellerOrders(seller.id)
+}
+
+export const getAllOrdersAdminService = async () => {
+  return await getAllOrdersAdmin()
 }

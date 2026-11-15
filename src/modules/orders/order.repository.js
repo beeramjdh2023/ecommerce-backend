@@ -132,6 +132,21 @@ export const updateOrderStatus = async (order_id, status, note) => {
   try {
     await conn.beginTransaction()
 
+    // if cancelling — restore stock
+    if (status === 'CANCELLED') {
+      const [items] = await conn.execute(
+        'SELECT product_id, quantity FROM order_items WHERE order_id = ?',
+        [order_id]
+      )
+
+      for (const item of items) {
+        await conn.execute(
+          'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?',
+          [item.quantity, item.product_id]
+        )
+      }
+    }
+
     await conn.execute(
       'UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?',
       [status, order_id]
@@ -150,4 +165,43 @@ export const updateOrderStatus = async (order_id, status, note) => {
   } finally {
     conn.release()
   }
+}
+
+
+export const getSellerOrders = async (seller_id) => {
+  const [rows] = await pool.execute(
+    `SELECT DISTINCT
+      o.id, o.status, o.final_amount, o.payment_status,
+      o.created_at, o.updated_at,
+      u.name AS customer_name,
+      u.email AS customer_email,
+      COUNT(oi.id) AS total_items
+     FROM orders o
+     JOIN order_items oi ON o.id = oi.order_id
+     JOIN users u ON o.user_id = u.id
+     WHERE oi.seller_id = ?
+     GROUP BY o.id
+     ORDER BY o.created_at DESC`,
+    [seller_id]
+  )
+  return rows
+}
+
+
+export const getAllOrdersAdmin = async () => {
+  const [rows] = await pool.execute(
+    `SELECT
+      o.id, o.status, o.final_amount, o.payment_status,
+      o.created_at, o.updated_at,
+      u.name AS customer_name,
+      u.email AS customer_email,
+      COUNT(oi.id) AS total_items
+     FROM orders o
+     JOIN users u ON o.user_id = u.id
+     JOIN order_items oi ON o.id = oi.order_id
+     GROUP BY o.id
+     ORDER BY o.created_at DESC`
+  )
+  console.log("Admin orders:", rows);
+  return rows
 }

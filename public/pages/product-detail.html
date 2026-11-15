@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/product-detail.css">
 </head>
+
 <body>
 
   <!-- NAVBAR -->
@@ -47,10 +49,10 @@
     <!-- TABS -->
     <div class="detail-tabs">
       <div class="tab-header">
-        <button class="tab-btn active" onclick="switchTab('description')">
+        <button class="tab-btn active" onclick="switchTab('description', this)">
           Description
         </button>
-        <button class="tab-btn" onclick="switchTab('reviews')">
+        <button class="tab-btn" onclick="switchTab('reviews', this)">
           Reviews (<span id="reviewCount">0</span>)
         </button>
       </div>
@@ -59,11 +61,48 @@
         <p class="description-text" id="descriptionText">Loading...</p>
       </div>
 
+
       <div class="tab-content" id="tab-reviews">
+
+        <!-- ADD REVIEW FORM -->
+        <div id="reviewFormSection" style="display:none; margin-bottom:24px;">
+          <h4 style="font-size:14px; font-weight:600; margin-bottom:12px;">
+            Write a Review
+          </h4>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <label style="font-size:13px; color:var(--text-secondary);
+                      display:block; margin-bottom:6px;">
+                Rating
+              </label>
+              <div id="starSelector" style="display:flex; gap:8px; font-size:28px;">
+                <span onclick="setRating(1)" style="cursor:pointer;">☆</span>
+                <span onclick="setRating(2)" style="cursor:pointer;">☆</span>
+                <span onclick="setRating(3)" style="cursor:pointer;">☆</span>
+                <span onclick="setRating(4)" style="cursor:pointer;">☆</span>
+                <span onclick="setRating(5)" style="cursor:pointer;">☆</span>
+              </div>
+            </div>
+            <textarea id="reviewComment" placeholder="Share your experience with this product..." style="width:100%; padding:10px 14px; background:var(--bg-secondary);
+               border:1px solid var(--border); border-radius:var(--radius-sm);
+               color:var(--text-primary); font-size:14px; outline:none;
+               resize:vertical; min-height:80px; font-family:inherit;">
+      </textarea>
+            <button onclick="submitReview()" style="padding:10px 24px; background:var(--accent); color:white;
+               border:none; border-radius:var(--radius-sm); font-size:14px;
+               font-weight:600; cursor:pointer; align-self:flex-start;">
+              Submit Review
+            </button>
+          </div>
+        </div>
+
         <div id="reviewsList">
           <div class="no-reviews">Loading reviews...</div>
         </div>
       </div>
+
+
+
     </div>
 
   </div>
@@ -74,7 +113,7 @@
   <script type="module">
     import { api } from '../js/api.js'
     import { requireAuth, getUser, removeToken, showToast } from '../js/utils.js'
-
+    
     requireAuth()
 
     // logout
@@ -113,12 +152,83 @@
     }
 
     // switch tabs
-    window.switchTab = (tab) => {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'))
-      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'))
+    window.switchTab = (tab, btn) => {
+      document.querySelectorAll('.tab-btn')
+        .forEach(b => b.classList.remove('active'))
+      document.querySelectorAll('.tab-content')
+        .forEach(c => c.classList.remove('active'))
 
-      event.target.classList.add('active')
+      btn.classList.add('active')
       document.getElementById(`tab-${tab}`).classList.add('active')
+    }
+
+
+    // review state
+    let selectedRating = 0
+    let userOrderId = null
+
+    // set star rating
+    window.setRating = (rating) => {
+      selectedRating = rating
+      const stars = document.querySelectorAll('#starSelector span')
+      stars.forEach((star, index) => {
+        star.textContent = index < rating ? '★' : '☆'
+        star.style.color = index < rating ? '#f59e0b' : 'inherit'
+      })
+    }
+
+    // submit review
+    window.submitReview = async () => {
+      if (!selectedRating) {
+        showToast('Please select a rating', 'error')
+        return
+      }
+
+      const comment = document.getElementById('reviewComment').value.trim()
+
+      const result = await api.reviews.create({
+        product_id: productId,
+        order_id: userOrderId,
+        rating: selectedRating,
+        comment
+      })
+
+      if (result.review) {
+        showToast('Review submitted successfully!')
+        document.getElementById('reviewFormSection').style.display = 'none'
+        loadReviews()
+        loadProduct() // refresh rating
+      } else {
+        showToast(result.message || 'Failed to submit review', 'error')
+      }
+    }
+
+    // check if user can review
+    const checkCanReview = async () => {
+      const ordersResult = await api.orders.getAll()
+      if (!ordersResult.orders) return
+
+      // find delivered order containing this product
+      for (const order of ordersResult.orders) {
+        if (order.status === 'DELIVERED') {
+          const orderDetail = await api.orders.getOne(order.id)
+          if (orderDetail.order?.items?.some(i => i.product_id === productId)) {
+            userOrderId = order.id
+
+            // check not already reviewed
+            const reviewsResult = await api.reviews.getProductReviews(productId)
+            const user = getUser()
+            const alreadyReviewed = reviewsResult.reviews?.some(
+              r => r.reviewer_name === user?.name
+            )
+
+            if (!alreadyReviewed) {
+              document.getElementById('reviewFormSection').style.display = 'block'
+            }
+            return
+          }
+        }
+      }
     }
 
     // update quantity display
@@ -167,9 +277,9 @@
         <!-- IMAGE -->
         <div class="product-detail-image">
           ${product.images?.length
-            ? `<img src="${product.images[0].image_url}" alt="${product.name}" />`
-            : '📦'
-          }
+          ? `<img src="${product.images[0].image_url}" alt="${product.name}" />`
+          : '📦'
+        }
         </div>
 
         <!-- INFO -->
@@ -186,13 +296,13 @@
           <div class="detail-price-row">
             <span class="detail-price">₹${Number(product.price).toLocaleString('en-IN')}</span>
             ${product.compare_price
-              ? `<span class="detail-compare-price">₹${Number(product.compare_price).toLocaleString('en-IN')}</span>`
-              : ''
-            }
+          ? `<span class="detail-compare-price">₹${Number(product.compare_price).toLocaleString('en-IN')}</span>`
+          : ''
+        }
             ${discount
-              ? `<span class="detail-discount">${discount}% OFF</span>`
-              : ''
-            }
+          ? `<span class="detail-discount">${discount}% OFF</span>`
+          : ''
+        }
           </div>
 
           <div class="detail-divider"></div>
@@ -272,9 +382,9 @@
           </div>
           <div class="review-stars">${renderStars(review.rating)}</div>
           ${review.comment
-            ? `<p class="review-comment">${review.comment}</p>`
-            : ''
-          }
+          ? `<p class="review-comment">${review.comment}</p>`
+          : ''
+        }
         </div>
       `).join('')
     }
@@ -328,6 +438,8 @@
     // init
     loadProduct()
     loadReviews()
+    checkCanReview()
   </script>
 </body>
+
 </html>

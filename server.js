@@ -7,6 +7,6 @@ dotenv.config();
 const port=process.env.PORT || 4000
 
 
-app.listen(4000,()=>{
-    console.log("ecommerse server is listing on ",port);
+app.listen(port,()=>{
+    console.log("ecommerce server is listening on port",port);
 })

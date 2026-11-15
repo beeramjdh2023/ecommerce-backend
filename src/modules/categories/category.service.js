@@ -3,6 +3,7 @@ import {
   createCategory, getAllCategories, getCategoryById,
   getCategoryBySlug, updateCategory, deleteCategory, getSubcategories
 } from './category.repository.js'
+import { invalidateCachePattern } from '../../utils/cache.utils.js'
 
 export const createCategoryService = async ({ name, image_url, parent_id }) => {
   // auto generate slug from name
