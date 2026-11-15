@@ -7,7 +7,7 @@ dotenv.config();
 const getPoolConfig = () => {
   if (process.env.DATABASE_URL) {
     const url = new URL(process.env.DATABASE_URL)
-    return {
+    const config = {
       host: url.hostname,
       port: parseInt(url.port) || 4000,
       user: decodeURIComponent(url.username),
@@ -21,8 +21,11 @@ const getPoolConfig = () => {
         rejectUnauthorized: true
       }
     }
+    console.log(`DB Config: host=${config.host}, port=${config.port}, user=${config.user}, database=${config.database}`)
+    return config
   }
-  return {
+
+  const config = {
     host: process.env.DB_HOST,
     database: process.env.DB_NAME,
     queueLimit: 0,
@@ -32,6 +35,16 @@ const getPoolConfig = () => {
     user: process.env.DB_USER,
     port: parseInt(process.env.DB_PORT) || 3306
   }
+
+  // Enable SSL/TLS for hosted MySQL (TiDB, PlanetScale, etc.)
+  if (process.env.DB_SSL === 'true') {
+    config.ssl = {
+      minVersion: 'TLSv1.2',
+      rejectUnauthorized: true
+    }
+  }
+
+  return config
 }
 
 const pool = mysql.createPool(getPoolConfig());
