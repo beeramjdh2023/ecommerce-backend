@@ -3,15 +3,21 @@ import dotenv from 'dotenv'
 
 dotenv.config();
 
-// Support both individual vars and a single DATABASE_URL (for hosted MySQL like Aiven/TiDB)
+// Support both individual vars and a single DATABASE_URL (for hosted MySQL like TiDB/Aiven)
 const getPoolConfig = () => {
   if (process.env.DATABASE_URL) {
+    const url = new URL(process.env.DATABASE_URL)
     return {
-      uri: process.env.DATABASE_URL,
+      host: url.hostname,
+      port: parseInt(url.port) || 4000,
+      user: decodeURIComponent(url.username),
+      password: decodeURIComponent(url.password),
+      database: url.pathname.replace('/', ''),
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
       ssl: {
+        minVersion: 'TLSv1.2',
         rejectUnauthorized: true
       }
     }
