@@ -3,11 +3,36 @@ import dotenv from 'dotenv'
 
 dotenv.config();
 
-// Support both individual vars and a single DATABASE_URL (for hosted MySQL like TiDB/Aiven)
+// Support both individual DB_* vars (preferred) and a single DATABASE_URL
 const getPoolConfig = () => {
+  // Prefer individual vars — no URL-parsing issues with special chars in username/password
+  if (process.env.DB_HOST) {
+    const config = {
+      host: process.env.DB_HOST,
+      database: process.env.DB_NAME,
+      queueLimit: 0,
+      connectionLimit: 10,
+      password: process.env.DB_PASSWORD,
+      waitForConnections: true,
+      user: process.env.DB_USER,
+      port: parseInt(process.env.DB_PORT) || 3306
+    }
+
+    // Enable SSL/TLS for hosted MySQL (TiDB, PlanetScale, etc.)
+    if (process.env.DB_SSL === 'true') {
+      config.ssl = {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: true
+      }
+    }
+
+    return config
+  }
+
+  // Fallback: parse DATABASE_URL
   if (process.env.DATABASE_URL) {
     const url = new URL(process.env.DATABASE_URL)
-    const config = {
+    return {
       host: url.hostname,
       port: parseInt(url.port) || 4000,
       user: decodeURIComponent(url.username),
@@ -21,30 +46,19 @@ const getPoolConfig = () => {
         rejectUnauthorized: true
       }
     }
-    console.log(`DB Config: host=${config.host}, port=${config.port}, user=${config.user}, database=${config.database}`)
-    return config
   }
 
-  const config = {
-    host: process.env.DB_HOST,
-    database: process.env.DB_NAME,
+  // Local development defaults
+  return {
+    host: 'localhost',
+    database: 'ecommerce_db',
     queueLimit: 0,
     connectionLimit: 10,
-    password: process.env.DB_PASSWORD,
+    password: 'Password',
     waitForConnections: true,
-    user: process.env.DB_USER,
-    port: parseInt(process.env.DB_PORT) || 3306
+    user: 'root',
+    port: 3306
   }
-
-  // Enable SSL/TLS for hosted MySQL (TiDB, PlanetScale, etc.)
-  if (process.env.DB_SSL === 'true') {
-    config.ssl = {
-      minVersion: 'TLSv1.2',
-      rejectUnauthorized: true
-    }
-  }
-
-  return config
 }
 
 const pool = mysql.createPool(getPoolConfig());
