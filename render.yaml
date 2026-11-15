@@ -10,37 +10,47 @@ services:
         value: production
       - key: PORT
         value: 4000
-      - key: DATABASE_URL
-        sync: false
+      - key: DB_HOST
+        value: gateway01.ap-northeast-1.prod.aws.tidbcloud.com
+      - key: DB_PORT
+        value: 4000
+      - key: DB_USER
+        value: 2E5o5uZnurIi6Hg.root
+      - key: DB_PASSWORD
+        value: 8rQdUK2Sn5SalZ1
+      - key: DB_NAME
+        value: ecommerce_db
+      - key: DB_SSL
+        value: true
       - key: REDIS_URL
-        sync: false
+        value: rediss://default:gQAAAAAAARJuAAIgcDE3Zjg2OTM2NDY4YTM0NDFmOTg4ZDQ3OTRlNjgwNWJjNQ@stirred-ladybug-70254.upstash.io:6379
       - key: JWT_SECRET
-        generateValue: true
+        value: bce72deb8569928162e7325a97eb43bfdff1c5c5bc8a56fe34f4fe1a9f2468d454490e79f9e1fcd1425b9f28a033497ac3a9d7e48ff8f1afc1fa2eff577f8150
       - key: JWT_REFRESH_SECRET
-        generateValue: true
+        value: 868d8e14328c852715e75abadc2319b1eb724894a0fb977b39e7338c8fcb66af708a3e6ce247f5f11c4533ef09d43ccd91966c57794819e2fdba9d9017a0db94
       - key: JWT_ACCESS_EXPIRES
         value: 7d
       - key: JWT_REFRESH_EXPIRES
         value: 7d
       - key: RAZORPAY_KEY_ID
-        sync: false
+        value: rzp_test_SNSBEZqTj2oiuE
       - key: RAZORPAY_KEY_SECRET
-        sync: false
+        value: 9GAfdK1rEdbGvpvX55SZNG4j
       - key: RAZORPAY_WEBHOOK_SECRET
-        sync: false
+        value: beeram_webhook_secret_123
       - key: EMAIL_HOST
-        sync: false
+        value: sandbox.smtp.mailtrap.io
       - key: EMAIL_PORT
-        sync: false
+        value: 2525
       - key: EMAIL_USER
-        sync: false
+        value: 8e47936ff6b296
       - key: EMAIL_PASS
-        sync: false
+        value: 94a76b3894751c
       - key: EMAIL_FROM
         value: noreply@ecommerce.com
       - key: CLOUDINARY_CLOUD_NAME
-        sync: false
+        value: dvfkm3itd
       - key: CLOUDINARY_API_KEY
-        sync: false
+        value: 459327174834168
       - key: CLOUDINARY_API_SECRET
-        sync: false
+        value: M4S-2Gm7zxvMeWUPQ0D7s9EJN60
